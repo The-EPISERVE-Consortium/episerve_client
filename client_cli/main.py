@@ -41,16 +41,19 @@ def _out(data, raw: bool) -> None:
 def _api(args) -> EpiserveApiClient:
     url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://your-api-server")
     key = args.api_key or os.environ.get("EPISERVE_API_KEY") or None
+    print(f"  → {url}", file=sys.stderr)
     return EpiserveApiClient(url, key)
 
 
 def _ckan(args) -> EpisserveCkanClient:
     url = args.ckan_url or os.environ.get("EPISERVE_CKAN_URL", "https://your-ckan-server")
+    print(f"  → {url}", file=sys.stderr)
     return EpisserveCkanClient(url)
 
 
 def _doip(args) -> EpiserveDoipClient:
     url = args.doip_url or os.environ.get("EPISERVE_DOIP_URL", "https://your-doip-server")
+    print(f"  → {url}", file=sys.stderr)
     return EpiserveDoipClient(url)
 
 
@@ -199,6 +202,14 @@ def main():
         sys.exit(1)
     except httpx.RequestError as exc:
         print(f"Connection error: {exc}", file=sys.stderr)
+        print(
+            "\nHint: create a .env file in the current directory with:\n"
+            "  EPISERVE_API_URL=https://api.episerve.zib.de\n"
+            "  EPISERVE_CKAN_URL=https://data.episerve.zib.de\n"
+            "  EPISERVE_DOIP_URL=https://doip.episerve.zib.de\n"
+            "  EPISERVE_API_KEY=",
+            file=sys.stderr,
+        )
         sys.exit(1)
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
