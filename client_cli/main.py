@@ -154,7 +154,8 @@ examples:
 
     # item
     item_p = sub.add_parser("item", help="Interact with a specific item by QID")
-    item_sub = item_p.add_subparsers(dest="item_command", required=True, metavar="<subcommand>")
+    item_sub = item_p.add_subparsers(dest="item_command", required=False, metavar="<subcommand>")
+    item_p.set_defaults(_item_parser=item_p)
 
     show_p = item_sub.add_parser("show", help="Show item details from CKAN")
     show_p.add_argument("qid", metavar="<QID>")
@@ -196,6 +197,9 @@ def main():
 
     try:
         if args.command == "item":
+            if args.item_command is None:
+                args._item_parser.print_help(sys.stderr)
+                sys.exit(0)
             {
                 "show":             cmd_item_show,
                 "list-components":  cmd_item_list_components,
