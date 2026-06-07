@@ -13,7 +13,7 @@ class EpiserveDoipClient:
         raw = r.json().get("kernel", {}).get("fdo:hasComponent", [])
         return [
             {
-                "id": comp.get("componentId", ""),
+                "id": comp.get("@id", "").removeprefix("components/"),
                 "mediaType": comp.get("mediaType", ""),
             }
             for comp in raw

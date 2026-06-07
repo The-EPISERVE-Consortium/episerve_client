@@ -69,7 +69,7 @@ class TestEpiserveDoipClient:
         with patch("episerve_client.doip_client.httpx.get", return_value=mock_response):
             result = client.list_components("Q123")
         assert len(result) == 1
-        assert result[0]["id"] == "predictions.tsv"
+        assert result[0]["id"] == "output/predictions.tsv"
 
     def test_list_components_empty(self):
         client = EpiserveDoipClient("https://your-doip-server")
