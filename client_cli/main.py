@@ -8,6 +8,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _print_banner() -> None:
+    if os.name == "nt":
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleMode(
+            ctypes.windll.kernel32.GetStdHandle(-11), 7
+        )
+    CYAN = "\033[36m"
+    RESET = "\033[0m"
+    banner = (
+        "\n"
+        "██████  ████▄   ██   ████  ██████  ████▄   ██   ██  ██████\n"
+        "██▄▄    ██▄▄█▀  ██  ▄▄▄██  ██▄▄    ██▄▄█▀   ██ ██   ██▄▄  \n"
+        "██████  ██      ██  ████▀  ██████  ██  ▀█    ▀█▀    ██████\n"
+        "\n"
+        "        Epidemiological Surveillance Platform\n"
+    )
+    print(CYAN + banner + RESET, file=sys.stderr)
+
 import httpx
 
 from episerve_client import EpiserveApiClient, EpisserveCkanClient, EpiserveDoipClient
@@ -161,6 +180,7 @@ environment variables (can also be set in .env):
 
 
 def main():
+    _print_banner()
     parser = _build_parser()
     args = parser.parse_args()
 
