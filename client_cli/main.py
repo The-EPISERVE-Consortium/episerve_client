@@ -182,6 +182,9 @@ environment variables (can also be set in .env):
 def main():
     _print_banner()
     parser = _build_parser()
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(0)
     args = parser.parse_args()
 
     dispatch = {
