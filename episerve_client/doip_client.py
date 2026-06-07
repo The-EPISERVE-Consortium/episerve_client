@@ -10,8 +10,14 @@ class EpiserveDoipClient:
     def list_components(self, qid: str) -> list[dict]:
         r = httpx.get(f"{self._base}/doip/retrieve/{qid}", timeout=30)
         r.raise_for_status()
-        fdo = r.json()
-        return fdo.get("kernel", {}).get("fdo:hasComponent", [])
+        raw = r.json().get("kernel", {}).get("fdo:hasComponent", [])
+        return [
+            {
+                "id": comp.get("componentId", ""),
+                "mediaType": comp.get("mediaType", ""),
+            }
+            for comp in raw
+        ]
 
     def download(self, qid: str, component_id: str) -> Iterator[bytes]:
         with httpx.stream("GET", f"{self._base}/doip/retrieve/{qid}/{component_id}", timeout=120) as r:
