@@ -2,26 +2,41 @@
 
 Python client library and standalone CLI for the EPISERVE epidemiological surveillance platform.
 
-## Installation
+## Download the CLI binary
 
+Pre-built binaries are published with every [GitHub Release](../../releases/latest).
+
+**Linux:**
 ```bash
-pip install -r requirements.txt
+curl -L https://github.com/The-EPISERVE-Consortium/episerve_client/releases/latest/download/episerve-client-linux -o episerve
+chmod +x episerve
+sudo mv episerve /usr/local/bin/
 ```
 
-Or just download the pre-built binary for your platform from the [Actions artifacts](../../actions).
+**macOS:**
+```bash
+curl -L https://github.com/The-EPISERVE-Consortium/episerve_client/releases/latest/download/episerve-client-macos -o episerve
+chmod +x episerve
+sudo mv episerve /usr/local/bin/
+```
+
+**Windows** (PowerShell):
+```powershell
+Invoke-WebRequest -Uri https://github.com/The-EPISERVE-Consortium/episerve_client/releases/latest/download/episerve-client-windows.exe -OutFile episerve.exe
+```
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in your values:
+Create a `.env` file in the directory where you run the CLI:
 
 ```env
-EPISERVE_API_URL=https://your-api-server
-EPISERVE_CKAN_URL=https://your-ckan-server
-EPISERVE_DOIP_URL=https://your-doip-server
+EPISERVE_API_URL=https://api.episerve.zib.de
+EPISERVE_CKAN_URL=https://data.episerve.zib.de
+EPISERVE_DOIP_URL=https://doip.episerve.zib.de
 EPISERVE_API_KEY=
 ```
 
-The `.env` file is loaded automatically from the directory where you run the CLI. You can also set these as environment variables, or pass them as flags (see `episerve --help`).
+The `.env` file is loaded automatically. You can also set these as environment variables or pass them as CLI flags.
 
 Priority: `CLI flag > environment variable > .env > built-in default`
 
@@ -45,7 +60,7 @@ episerve list runs
 ### Item details and components
 
 ```bash
-# Show full CKAN metadata for any item by QID
+# Show full metadata for any item by QID
 episerve item show Q1748526042817
 
 # List FDO components stored in the DOIP server
@@ -81,7 +96,7 @@ Example `params.json`:
 }
 ```
 
-Returns `202` immediately with a `run_id`. The run can then be tracked via:
+Returns `202` immediately with a `run_id`. Track the run with:
 
 ```bash
 episerve item show <run_id>
@@ -103,9 +118,9 @@ episerve item show <run_id>
 from episerve_client import EpiserveClient
 
 client = EpiserveClient(
-    api_url="https://your-api-server",
-    ckan_url="https://your-ckan-server",
-    doip_url="https://your-doip-server",
+    api_url="https://api.episerve.zib.de",
+    ckan_url="https://data.episerve.zib.de",
+    doip_url="https://doip.episerve.zib.de",
 )
 
 # List
@@ -135,17 +150,19 @@ The library also exposes individual clients if you only need one backend:
 from episerve_client import EpiserveApiClient, EpisserveCkanClient, EpiserveDoipClient
 ```
 
+## Install from source
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Running tests
 
 ```bash
 pytest tests/ -v
 ```
 
-## Building the binary
-
-The GitHub Actions workflow (`.github/workflows/build-binary.yml`) builds standalone binaries for Linux, macOS, and Windows using PyInstaller on every push to `main`. Download the artifact for your platform from the Actions tab.
-
-To build locally:
+## Building the binary locally
 
 ```bash
 pip install pyinstaller
