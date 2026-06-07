@@ -39,20 +39,20 @@ def _out(data, raw: bool) -> None:
 
 
 def _api(args) -> EpiserveApiClient:
-    url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://your-api-server")
+    url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://my-api-server")
     key = args.api_key or os.environ.get("EPISERVE_API_KEY") or None
     print(f"  → {url}", file=sys.stderr)
     return EpiserveApiClient(url, key)
 
 
 def _ckan(args) -> EpisserveCkanClient:
-    url = args.ckan_url or os.environ.get("EPISERVE_CKAN_URL", "https://your-ckan-server")
+    url = args.ckan_url or os.environ.get("EPISERVE_CKAN_URL", "https://my-ckan-server")
     print(f"  → {url}", file=sys.stderr)
     return EpisserveCkanClient(url)
 
 
 def _doip(args) -> EpiserveDoipClient:
-    url = args.doip_url or os.environ.get("EPISERVE_DOIP_URL", "https://your-doip-server")
+    url = args.doip_url or os.environ.get("EPISERVE_DOIP_URL", "https://my-doip-server")
     print(f"  → {url}", file=sys.stderr)
     return EpiserveDoipClient(url)
 
@@ -204,9 +204,9 @@ def main():
         print(f"Connection error: {exc}", file=sys.stderr)
         print(
             "\nHint: create a .env file in the current directory with:\n"
-            "  EPISERVE_API_URL=https://...\n"
-            "  EPISERVE_CKAN_URL=https://...\n"
-            "  EPISERVE_DOIP_URL=https://...\n"
+            "  EPISERVE_API_URL=https://my-api-server\n"
+            "  EPISERVE_CKAN_URL=https://my-ckan-server\n"
+            "  EPISERVE_DOIP_URL=https://my-doip-server\n"
             "  EPISERVE_API_KEY=",
             file=sys.stderr,
         )
