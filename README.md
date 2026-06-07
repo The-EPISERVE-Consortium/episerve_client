@@ -6,33 +6,14 @@ Python client library and standalone CLI for the EPISERVE epidemiological survei
 
 Pre-built binaries are published with every [GitHub Release](../../releases/latest).
 
-**Linux:**
-```bash
-curl -L https://github.com/The-EPISERVE-Consortium/episerve_client/releases/latest/download/episerve-client-linux -o episerve
-chmod +x episerve
-sudo mv episerve /usr/local/bin/
-```
-
-**macOS:**
-```bash
-curl -L https://github.com/The-EPISERVE-Consortium/episerve_client/releases/latest/download/episerve-client-macos -o episerve
-chmod +x episerve
-sudo mv episerve /usr/local/bin/
-```
-
-**Windows** (PowerShell):
-```powershell
-Invoke-WebRequest -Uri https://github.com/The-EPISERVE-Consortium/episerve_client/releases/latest/download/episerve-client-windows.exe -OutFile episerve.exe
-```
-
 ## Configuration
 
 Create a `.env` file in the directory where you run the CLI:
 
 ```env
-EPISERVE_API_URL=https://api.episerve.zib.de
-EPISERVE_CKAN_URL=https://data.episerve.zib.de
-EPISERVE_DOIP_URL=https://doip.episerve.zib.de
+EPISERVE_API_URL=https://my-api-server
+EPISERVE_CKAN_URL=https://my-ckan-server
+EPISERVE_DOIP_URL=https://my-doip-server
 EPISERVE_API_KEY=
 ```
 
@@ -118,9 +99,9 @@ episerve item show <run_id>
 from episerve_client import EpiserveClient
 
 client = EpiserveClient(
-    api_url="https://api.episerve.zib.de",
-    ckan_url="https://data.episerve.zib.de",
-    doip_url="https://doip.episerve.zib.de",
+    api_url="https://my-api-server",
+    ckan_url="https://my-ckan-server",
+    doip_url="https://my-doip-server",
 )
 
 # List
