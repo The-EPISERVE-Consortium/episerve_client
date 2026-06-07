@@ -204,9 +204,9 @@ def main():
         print(f"Connection error: {exc}", file=sys.stderr)
         print(
             "\nHint: create a .env file in the current directory with:\n"
-            "  EPISERVE_API_URL=https://api.episerve.zib.de\n"
-            "  EPISERVE_CKAN_URL=https://data.episerve.zib.de\n"
-            "  EPISERVE_DOIP_URL=https://doip.episerve.zib.de\n"
+            "  EPISERVE_API_URL=https://...\n"
+            "  EPISERVE_CKAN_URL=https://...\n"
+            "  EPISERVE_DOIP_URL=https://...\n"
             "  EPISERVE_API_KEY=",
             file=sys.stderr,
         )
