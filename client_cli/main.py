@@ -64,6 +64,9 @@ def cmd_health(args):
 
 
 def cmd_list(args):
+    if args.type is None:
+        args._list_parser.print_help(sys.stderr)
+        sys.exit(0)
     client = _api(args)
     result = {
         "datasets-raw": client.list_raw_datasets,
@@ -143,8 +146,11 @@ examples:
         "type",
         choices=["datasets-raw", "datasets", "models", "runs"],
         metavar="<type>",
+        nargs="?",
+        default=None,
         help="datasets-raw | datasets | models | runs",
     )
+    list_p.set_defaults(_list_parser=list_p)
 
     # item
     item_p = sub.add_parser("item", help="Interact with a specific item by QID")
