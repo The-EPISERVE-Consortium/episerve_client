@@ -1,0 +1,66 @@
+name: Build CLI binary
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            artifact: episerve-linux
+            binary: episerve
+          - os: macos-latest
+            artifact: episerve-macos
+            binary: episerve
+          - os: windows-latest
+            artifact: episerve-windows
+            binary: episerve.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+      - name: Build binary
+        run: |
+          pyinstaller \
+            --onefile \
+            --name episerve \
+            --hidden-import anyio \
+            --hidden-import sniffio \
+            --hidden-import h11 \
+            --hidden-import httpcore \
+            --hidden-import certifi \
+            client_cli/main.py
+
+      - name: Checksum (Unix)
+        if: runner.os != 'Windows'
+        run: sha256sum dist/${{ matrix.binary }} > dist/checksum.txt
+
+      - name: Checksum (Windows)
+        if: runner.os == 'Windows'
+        run: certutil -hashfile dist\${{ matrix.binary }} SHA256 > dist\checksum.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/${{ matrix.binary }}
+            dist/checksum.txt
