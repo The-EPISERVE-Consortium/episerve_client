@@ -1,6 +1,6 @@
 # episerve_client
 
-Python client library and standalone CLI for the [EPISERVE](https://api.episerve.zib.de) epidemiological surveillance platform.
+Python client library and standalone CLI for the EPISERVE epidemiological surveillance platform.
 
 ## Installation
 
@@ -15,9 +15,9 @@ Or just download the pre-built binary for your platform from the [Actions artifa
 Copy `.env.example` to `.env` and fill in your values:
 
 ```env
-EPISERVE_API_URL=https://api.episerve.zib.de
-EPISERVE_CKAN_URL=https://data.episerve.zib.de
-EPISERVE_DOIP_URL=https://doip.episerve.zib.de
+EPISERVE_API_URL=https://your-api-server
+EPISERVE_CKAN_URL=https://your-ckan-server
+EPISERVE_DOIP_URL=https://your-doip-server
 EPISERVE_API_KEY=
 ```
 
@@ -103,9 +103,9 @@ episerve item show <run_id>
 from episerve_client import EpiserveClient
 
 client = EpiserveClient(
-    api_url="https://api.episerve.zib.de",
-    ckan_url="https://data.episerve.zib.de",
-    doip_url="https://doip.episerve.zib.de",
+    api_url="https://your-api-server",
+    ckan_url="https://your-ckan-server",
+    doip_url="https://your-doip-server",
 )
 
 # List

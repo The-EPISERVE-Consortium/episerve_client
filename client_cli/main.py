@@ -20,18 +20,18 @@ def _out(data, raw: bool) -> None:
 
 
 def _api(args) -> EpiserveApiClient:
-    url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://api.episerve.zib.de")
+    url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://your-api-server")
     key = args.api_key or os.environ.get("EPISERVE_API_KEY") or None
     return EpiserveApiClient(url, key)
 
 
 def _ckan(args) -> EpisserveCkanClient:
-    url = args.ckan_url or os.environ.get("EPISERVE_CKAN_URL", "https://data.episerve.zib.de")
+    url = args.ckan_url or os.environ.get("EPISERVE_CKAN_URL", "https://your-ckan-server")
     return EpisserveCkanClient(url)
 
 
 def _doip(args) -> EpiserveDoipClient:
-    url = args.doip_url or os.environ.get("EPISERVE_DOIP_URL", "https://doip.episerve.zib.de")
+    url = args.doip_url or os.environ.get("EPISERVE_DOIP_URL", "https://your-doip-server")
     return EpiserveDoipClient(url)
 
 
@@ -106,9 +106,9 @@ examples:
   episerve trigger-model-run '{"model_image":"ghcr.io/...","input_path":"lakefs://...","config":{}}'
 
 environment variables (can also be set in .env):
-  EPISERVE_API_URL   API server base URL  (default: https://api.episerve.zib.de)
-  EPISERVE_CKAN_URL  CKAN base URL        (default: https://data.episerve.zib.de)
-  EPISERVE_DOIP_URL  DOIP server base URL (default: https://doip.episerve.zib.de)
+  EPISERVE_API_URL   API server base URL  (default: https://your-api-server)
+  EPISERVE_CKAN_URL  CKAN base URL        (default: https://your-ckan-server)
+  EPISERVE_DOIP_URL  DOIP server base URL (default: https://your-doip-server)
   EPISERVE_API_KEY   Bearer token for authenticated requests
 """,
     )

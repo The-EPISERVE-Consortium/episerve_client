@@ -12,7 +12,7 @@ from episerve_client import EpiserveApiClient, EpisserveCkanClient, EpiserveDoip
 
 class TestEpiserveApiClient:
     def test_health(self):
-        client = EpiserveApiClient("https://api.episerve.zib.de")
+        client = EpiserveApiClient("https://your-api-server")
         mock_response = MagicMock()
         mock_response.json.return_value = {"status": "ok"}
         with patch.object(client._http, "get", return_value=mock_response):
@@ -20,7 +20,7 @@ class TestEpiserveApiClient:
         assert result == {"status": "ok"}
 
     def test_list_runs(self):
-        client = EpiserveApiClient("https://api.episerve.zib.de")
+        client = EpiserveApiClient("https://your-api-server")
         mock_response = MagicMock()
         mock_response.json.return_value = [{"qid": "Q123", "model_name": "test"}]
         with patch.object(client._http, "get", return_value=mock_response):
@@ -29,7 +29,7 @@ class TestEpiserveApiClient:
         assert result[0]["qid"] == "Q123"
 
     def test_trigger_model_run(self):
-        client = EpiserveApiClient("https://api.episerve.zib.de")
+        client = EpiserveApiClient("https://your-api-server")
         mock_response = MagicMock()
         mock_response.json.return_value = {"run_id": "abc", "status": "SCHEDULED"}
         with patch.object(client._http, "post", return_value=mock_response):
@@ -39,7 +39,7 @@ class TestEpiserveApiClient:
 
 class TestEpisserveCkanClient:
     def test_show(self):
-        client = EpisserveCkanClient("https://data.episerve.zib.de")
+        client = EpisserveCkanClient("https://your-ckan-server")
         mock_response = MagicMock()
         mock_response.json.return_value = {"success": True, "result": {"id": "q123", "title": "Test"}}
         with patch("episerve_client.ckan_client.httpx.get", return_value=mock_response):
@@ -47,7 +47,7 @@ class TestEpisserveCkanClient:
         assert result["id"] == "q123"
 
     def test_show_ckan_error(self):
-        client = EpisserveCkanClient("https://data.episerve.zib.de")
+        client = EpisserveCkanClient("https://your-ckan-server")
         mock_response = MagicMock()
         mock_response.json.return_value = {"success": False, "error": {"message": "Not found"}}
         with patch("episerve_client.ckan_client.httpx.get", return_value=mock_response):
@@ -57,7 +57,7 @@ class TestEpisserveCkanClient:
 
 class TestEpiserveDoipClient:
     def test_list_components(self):
-        client = EpiserveDoipClient("https://doip.episerve.zib.de")
+        client = EpiserveDoipClient("https://your-doip-server")
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "kernel": {
@@ -72,7 +72,7 @@ class TestEpiserveDoipClient:
         assert result[0]["componentId"] == "predictions.tsv"
 
     def test_list_components_empty(self):
-        client = EpiserveDoipClient("https://doip.episerve.zib.de")
+        client = EpiserveDoipClient("https://your-doip-server")
         mock_response = MagicMock()
         mock_response.json.return_value = {"kernel": {}}
         with patch("episerve_client.doip_client.httpx.get", return_value=mock_response):

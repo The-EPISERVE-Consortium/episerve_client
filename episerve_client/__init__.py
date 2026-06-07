@@ -19,9 +19,9 @@ class EpiserveClient:
 
     def __init__(
         self,
-        api_url: str = "https://api.episerve.zib.de",
-        ckan_url: str = "https://data.episerve.zib.de",
-        doip_url: str = "https://doip.episerve.zib.de",
+        api_url: str = "https://your-api-server",
+        ckan_url: str = "https://your-ckan-server",
+        doip_url: str = "https://your-doip-server",
         api_key: str | None = None,
     ):
         self.api = EpiserveApiClient(api_url, api_key)
