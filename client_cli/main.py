@@ -123,12 +123,6 @@ examples:
   episerve item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
   episerve trigger-model-run params.json
   episerve trigger-model-run '{"model_image":"ghcr.io/...","input_path":"lakefs://...","config":{}}'
-
-environment variables (can also be set in .env):
-  EPISERVE_API_URL   API server base URL  (default: https://your-api-server)
-  EPISERVE_CKAN_URL  CKAN base URL        (default: https://your-ckan-server)
-  EPISERVE_DOIP_URL  DOIP server base URL (default: https://your-doip-server)
-  EPISERVE_API_KEY   Bearer token for authenticated requests
 """,
     )
     parser.add_argument("--api-url",  metavar="URL", help="Override EPISERVE_API_URL")
