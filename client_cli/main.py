@@ -121,14 +121,12 @@ examples:
   episerve item show Q1748526042817
   episerve item list-components Q1748526042817
   episerve item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
-  episerve trigger-model-run params.json
-  episerve trigger-model-run '{"model_image":"ghcr.io/...","input_path":"lakefs://...","config":{}}'
 """,
     )
-    parser.add_argument("--api-url",  metavar="URL", help="Override EPISERVE_API_URL")
-    parser.add_argument("--ckan-url", metavar="URL", help="Override EPISERVE_CKAN_URL")
-    parser.add_argument("--doip-url", metavar="URL", help="Override EPISERVE_DOIP_URL")
-    parser.add_argument("--api-key",  metavar="KEY", help="Override EPISERVE_API_KEY")
+    parser.add_argument("--api-url",  metavar="URL", help="set the API server URL (controls all list/trigger commands)")
+    parser.add_argument("--ckan-url", metavar="URL", help="set the CKAN URL (controls item show)")
+    parser.add_argument("--doip-url", metavar="URL", help="set the DOIP server URL (controls item list-components and download)")
+    parser.add_argument("--api-key",  metavar="KEY", help="set the bearer token for authenticated API requests")
     parser.add_argument("--raw", action="store_true", help="Compact JSON output (no indentation)")
 
     sub = parser.add_subparsers(dest="command", required=True, metavar="<command>")
