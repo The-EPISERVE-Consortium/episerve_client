@@ -110,17 +110,17 @@ def cmd_trigger_model_run(args):
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="episerve",
+        prog="episerve-client",
         description="CLI for the EPISERVE epidemiological surveillance platform.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
-  episerve health
-  episerve list runs
-  episerve list datasets
-  episerve item show Q1748526042817
-  episerve item list-components Q1748526042817
-  episerve item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
+  episerve-client health
+  episerve-client list runs
+  episerve-client list datasets
+  episerve-client item show Q1748526042817
+  episerve-client item list-components Q1748526042817
+  episerve-client item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
 """,
     )
     parser.add_argument("--api-url",  metavar="URL", help="set the API server URL (controls all list/trigger commands)")
