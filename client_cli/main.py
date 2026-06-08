@@ -59,6 +59,40 @@ def _doip(args) -> EpiserveDoipClient:
 
 # --- command handlers ---
 
+def cmd_login(args):
+    if getattr(args, "login_command", None) == "status":
+        cmd_login_status(args)
+        return
+
+    url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://my-api-server")
+    result = EpiserveApiClient(url).get_token(args.username, args.password)
+    token = result["token"]
+    expires_at = result["expires_at"]
+
+    env_path = Path(".env")
+    if env_path.exists():
+        lines = env_path.read_text().splitlines()
+        new_lines, updated = [], False
+        for line in lines:
+            if line.startswith("EPISERVE_API_KEY="):
+                new_lines.append(f"EPISERVE_API_KEY={token}")
+                updated = True
+            else:
+                new_lines.append(line)
+        if not updated:
+            new_lines.append(f"EPISERVE_API_KEY={token}")
+        env_path.write_text("\n".join(new_lines) + "\n")
+    else:
+        env_path.write_text(f"EPISERVE_API_KEY={token}\n")
+
+    print(f"Token saved to .env (valid until {expires_at})", file=sys.stderr)
+
+
+def cmd_login_status(args):
+    result = _api(args).get_token_status()
+    print(f"Token is valid. Expires at: {result['expires_at']} UTC", file=sys.stderr)
+
+
 def cmd_health(args):
     _out(_api(args).health(), args.raw)
 
@@ -137,6 +171,13 @@ examples:
 
     sub = parser.add_subparsers(dest="command", required=True, metavar="<command>")
 
+    # login
+    login_p = sub.add_parser("login", help="Authenticate and manage tokens")
+    login_p.add_argument("--username", "-u", metavar="<username>")
+    login_p.add_argument("--password", "-p", metavar="<password>")
+    login_sub = login_p.add_subparsers(dest="login_command", metavar="<subcommand>")
+    login_sub.add_parser("status", help="Check whether the current token is valid and show expiry")
+
     # health
     sub.add_parser("health", help="Check API server health")
 
@@ -190,6 +231,7 @@ def main():
     args = parser.parse_args()
 
     dispatch = {
+        "login":              cmd_login,
         "health":             cmd_health,
         "list":               cmd_list,
         "trigger-model-run":  cmd_trigger_model_run,

@@ -23,6 +23,16 @@ class EpiserveApiClient:
     def list_runs(self) -> list[dict]:
         return self._get("/model-runs")
 
+    def get_token(self, username: str, password: str) -> dict:
+        r = self._http.post("/auth/token", json={"username": username, "password": password})
+        r.raise_for_status()
+        return r.json()
+
+    def get_token_status(self) -> dict:
+        r = self._http.get("/auth/status")
+        r.raise_for_status()
+        return r.json()
+
     def trigger_model_run(self, params: dict) -> dict:
         r = self._http.post("/model-runs", json=params)
         r.raise_for_status()
