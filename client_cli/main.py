@@ -64,10 +64,15 @@ def cmd_login(args):
         cmd_login_status(args)
         return
 
-    if not args.username or not args.password:
+    username = args.username or os.environ.get("EPISERVE_USERNAME")
+    password = args.password or os.environ.get("EPISERVE_PASSWORD")
+
+    if not username or not password:
         print(
             "Authenticate and save the daily token to .env:\n"
             "  episerve-client login -u <username> -p <password>\n"
+            "\n"
+            "Or set EPISERVE_USERNAME and EPISERVE_PASSWORD in .env to skip the flags.\n"
             "\n"
             "Check whether the stored token is still valid:\n"
             "  episerve-client login status",
@@ -76,7 +81,7 @@ def cmd_login(args):
         sys.exit(0)
 
     url = args.api_url or os.environ.get("EPISERVE_API_URL", "https://my-api-server")
-    result = EpiserveApiClient(url).get_token(args.username, args.password)
+    result = EpiserveApiClient(url).get_token(username, password)
     token = result["token"]
     expires_at = result["expires_at"]
 
