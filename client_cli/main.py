@@ -164,13 +164,29 @@ def cmd_trigger_model_run(args):
 
 # --- parser ---
 
+def _print_short_help(parser: argparse.ArgumentParser) -> None:
+    print(parser.description + "\n", file=sys.stderr)
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            print("positional arguments:", file=sys.stderr)
+            print(f"  {action.metavar}", file=sys.stderr)
+            for choice in action._choices_actions:
+                print(f"    {choice.dest:<20} {choice.help}", file=sys.stderr)
+            break
+    print("\noptions:", file=sys.stderr)
+    print("  -h, --help           show extended help and exit", file=sys.stderr)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="episerve-client",
         description="CLI for the EPISERVE epidemiological surveillance platform.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
         epilog="""
 examples:
+  episerve-client login
+  episerve-client login status
   episerve-client health
   episerve-client list runs
   episerve-client list datasets
@@ -179,6 +195,8 @@ examples:
   episerve-client item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
 """,
     )
+    parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS,
+                        help="show extended help and exit")
     parser.add_argument("--api-url",  metavar="URL", help="set the API server URL (controls all list/trigger commands)")
     parser.add_argument("--ckan-url", metavar="URL", help="set the CKAN URL (controls item show)")
     parser.add_argument("--doip-url", metavar="URL", help="set the DOIP server URL (controls item list-components and download)")
@@ -242,7 +260,7 @@ def main():
     _print_banner()
     parser = _build_parser()
     if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
+        _print_short_help(parser)
         sys.exit(0)
     args = parser.parse_args()
 
