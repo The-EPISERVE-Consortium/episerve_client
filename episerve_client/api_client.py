@@ -11,9 +11,6 @@ class EpiserveApiClient:
     def health(self) -> dict:
         return self._get("/health")
 
-    def list_raw_datasets(self) -> list[dict]:
-        return self._get("/datasets_raw")
-
     def list_datasets(self) -> list[dict]:
         return self._get("/datasets")
 

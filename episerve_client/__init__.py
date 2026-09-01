@@ -33,9 +33,6 @@ class EpiserveClient:
     def health(self) -> dict:
         return self.api.health()
 
-    def list_raw_datasets(self) -> list[dict]:
-        return self.api.list_raw_datasets()
-
     def list_datasets(self) -> list[dict]:
         return self.api.list_datasets()
 

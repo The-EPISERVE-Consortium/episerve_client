@@ -1,4 +1,8 @@
 .env
+.env~
+*~
+wget-log
+/episerve-client
 __pycache__/
 *.py[cod]
 .venv/

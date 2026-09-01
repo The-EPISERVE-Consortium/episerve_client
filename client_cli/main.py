@@ -119,7 +119,6 @@ def cmd_list(args):
         sys.exit(0)
     client = _api(args)
     result = {
-        "datasets-raw": client.list_raw_datasets,
         "datasets":     client.list_datasets,
         "models":       client.list_models,
         "runs":         client.list_runs,
@@ -219,11 +218,11 @@ examples:
     list_p = sub.add_parser("list", help="List items of a given type")
     list_p.add_argument(
         "type",
-        choices=["datasets-raw", "datasets", "models", "runs"],
+        choices=["datasets", "models", "runs"],
         metavar="<type>",
         nargs="?",
         default=None,
-        help="datasets-raw | datasets | models | runs",
+        help="datasets | models | runs",
     )
     list_p.set_defaults(_list_parser=list_p)
 

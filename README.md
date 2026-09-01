@@ -32,7 +32,6 @@ episerve health
 ### List items
 
 ```bash
-episerve list datasets-raw
 episerve list datasets
 episerve list models
 episerve list runs
