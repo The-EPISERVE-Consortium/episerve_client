@@ -47,10 +47,12 @@ episerve item show Q1748526042817
 episerve item list-components Q1748526042817
 
 # Download a specific component to a file
-episerve item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
+# (the component id is what `item list-components` prints: the FDO @id with
+#  the leading `components/` stripped)
+episerve item download Q1748526042817 output/predictions.tsv -o predictions.tsv
 
 # Stream a component to stdout
-episerve item download Q1748526042817 components/output/predictions.tsv
+episerve item download Q1748526042817 output/predictions.tsv
 ```
 
 ### Trigger a model run
@@ -59,7 +61,7 @@ Pass parameters as a JSON file or inline JSON string:
 
 ```bash
 episerve trigger-model-run params.json
-episerve trigger-model-run '{"model_image": "ghcr.io/the-episerve-consortium/model__prediction__grippeweb__baseline-nullmodel", "input_path": "lakefs://data-raw/main/incidence/influenza/RKI__grippeweb.tsv", "config": {"horizon_weeks": 4, "n_reference_weeks": 4}}'
+episerve trigger-model-run '{"model_image": "ghcr.io/the-episerve-consortium/model__prediction__grippeweb__baseline-nullmodel", "input_data_files": [["https://doip.episerve.zib.de/doip/retrieve/Q3274128860531/GrippeWeb_Daten_des_Wochenberichts.parquet", "input.parquet"]], "config": {"horizon_weeks": 4, "n_reference_weeks": 4}}'
 ```
 
 Example `params.json`:
@@ -68,13 +70,19 @@ Example `params.json`:
 {
   "model_image": "ghcr.io/the-episerve-consortium/model__prediction__grippeweb__baseline-nullmodel",
   "model_tag": "latest",
-  "input_path": "lakefs://data-raw/main/incidence/influenza/RKI__grippeweb.tsv",
+  "input_data_files": [
+    ["https://doip.episerve.zib.de/doip/retrieve/Q3274128860531/GrippeWeb_Daten_des_Wochenberichts.parquet", "input.parquet"]
+  ],
   "config": {
     "horizon_weeks": 4,
     "n_reference_weeks": 4
   }
 }
 ```
+
+`input_data_files` is a list of `[source_uri, target_filename]` pairs; the
+source is a `lakefs://` URI or a DOIP retrieve URL. `data_transformation_sql`
+(optional) is a parallel list of DuckDB SQL filters run against a table `df`.
 
 Returns `202` immediately with a `run_id`. Track the run with:
 
@@ -112,13 +120,15 @@ models = client.list_models()
 details = client.item_show("Q1748526042817")
 components = client.item_list_components("Q1748526042817")
 
-# Download
-client.item_download("Q1748526042817", "components/output/predictions.tsv", "predictions.tsv")
+# Download (component id as printed by item_list_components)
+client.item_download("Q1748526042817", "output/predictions.tsv", "predictions.tsv")
 
 # Trigger
 result = client.trigger_model_run({
     "model_image": "ghcr.io/the-episerve-consortium/model__prediction__grippeweb__baseline-nullmodel",
-    "input_path": "lakefs://data-raw/main/incidence/influenza/RKI__grippeweb.tsv",
+    "input_data_files": [
+        ["https://doip.episerve.zib.de/doip/retrieve/Q3274128860531/GrippeWeb_Daten_des_Wochenberichts.parquet", "input.parquet"],
+    ],
     "config": {"horizon_weeks": 4, "n_reference_weeks": 4},
 })
 print(result["run_id"])

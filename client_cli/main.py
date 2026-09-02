@@ -191,7 +191,7 @@ examples:
   episerve-client list datasets
   episerve-client item show Q1748526042817
   episerve-client item list-components Q1748526042817
-  episerve-client item download Q1748526042817 components/output/predictions.tsv -o predictions.tsv
+  episerve-client item download Q1748526042817 output/predictions.tsv -o predictions.tsv
 """,
     )
     parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS,
@@ -240,7 +240,8 @@ examples:
     dl_p = item_sub.add_parser("download", help="Download a component via DOIP")
     dl_p.add_argument("qid", metavar="<QID>")
     dl_p.add_argument("component_id", metavar="<component-id>",
-                      help="e.g. components/output/predictions.tsv")
+                      help="component id as printed by 'item list-components', "
+                           "e.g. output/predictions.tsv")
     dl_p.add_argument("--output", "-o", metavar="<file>",
                       help="Output file path (default: stdout)")
 

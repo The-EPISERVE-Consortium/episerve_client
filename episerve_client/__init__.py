@@ -14,7 +14,7 @@ class EpiserveClient:
         client = EpiserveClient()
         print(client.list_runs())
         print(client.item_show("Q1748526042817"))
-        client.item_download("Q1748526042817", "components/output/predictions.tsv", "predictions.tsv")
+        client.item_download("Q1748526042817", "output/predictions.tsv", "predictions.tsv")
     """
 
     def __init__(
