@@ -37,6 +37,83 @@ class TestEpiserveApiClient:
         assert result["status"] == "SCHEDULED"
 
 
+def _respond(payload=None, status=200):
+    response = MagicMock()
+    response.status_code = status
+    response.json.return_value = payload
+    return response
+
+
+class TestBenchmarkMethods:
+    def setup_method(self):
+        self.client = EpiserveApiClient("https://your-api-server", "tok")
+
+    def test_reads_use_get(self):
+        with patch.object(self.client._http, "get", return_value=_respond([{"id": 1}])) as get:
+            assert self.client.list_benchmarks() == [{"id": 1}]
+            self.client.list_benchmark_drafts()
+            self.client.get_benchmark(4)
+            self.client.get_benchmark_run_spec(4)
+        assert [c.args[0] for c in get.call_args_list] == [
+            "/benchmarks", "/benchmarks/drafts", "/benchmarks/4", "/benchmarks/4/run-spec"]
+
+    def test_leaderboard_passes_ranking_options(self):
+        with patch.object(self.client._http, "get", return_value=_respond({"entries": []})) as get:
+            self.client.get_leaderboard(4, "mae", True)
+        assert get.call_args.args[0] == "/benchmarks/4/leaderboard"
+        assert get.call_args.kwargs["params"] == {"rank_by": "mae", "all_runs": True}
+
+    def test_create_sends_iso_dates_and_omits_unset_options(self):
+        from datetime import date
+        with patch.object(self.client._http, "request", return_value=_respond({"id": 9}, 201)) as req:
+            result = self.client.create_benchmark(
+                "Flu", "Q1", "v", "datum", date(2026, 4, 1), "2026-09-30", filter_column="typ", filter_value="A")
+        assert result == {"id": 9}
+        method, path = req.call_args.args
+        assert (method, path) == ("POST", "/benchmarks")
+        assert req.call_args.kwargs["json"] == {
+            "name": "Flu", "dataset_qid": "Q1", "target_column": "v", "date_column": "datum",
+            "test_start": "2026-04-01", "test_end": "2026-09-30", "filter_column": "typ", "filter_value": "A"}
+
+    def test_update_sends_only_given_fields_and_keeps_none_to_clear(self):
+        with patch.object(self.client._http, "request", return_value=_respond({"id": 9})) as req:
+            self.client.update_benchmark(9, name="New", filter_column=None)
+        assert req.call_args.args == ("PATCH", "/benchmarks/9")
+        assert req.call_args.kwargs["json"] == {"name": "New", "filter_column": None}
+
+    def test_lifecycle_calls(self):
+        with patch.object(self.client._http, "request", return_value=_respond({"ok": True})) as req:
+            self.client.check_benchmark(2)
+            self.client.finalize_benchmark(2)
+            self.client.copy_benchmark(2)
+            self.client.add_benchmark_entry(2, "Q55")
+        assert [c.args for c in req.call_args_list] == [
+            ("POST", "/benchmarks/2/check"), ("POST", "/benchmarks/2/finalize"),
+            ("POST", "/benchmarks/2/copy"), ("POST", "/benchmarks/2/entries")]
+        assert req.call_args.kwargs["json"] == {"run_qid": "Q55"}
+
+    def test_204_calls_return_none(self):
+        with patch.object(self.client._http, "request", return_value=_respond(None, 204)) as req:
+            assert self.client.retire_benchmark(2) is None
+            assert self.client.remove_benchmark_entry(2, 7) is None
+        assert [c.args for c in req.call_args_list] == [
+            ("POST", "/benchmarks/2/retire"), ("DELETE", "/benchmarks/2/entries/7")]
+
+    def test_errors_are_raised(self):
+        import httpx
+        response = _respond({"detail": "no"}, 422)
+        response.raise_for_status.side_effect = httpx.HTTPStatusError("bad", request=MagicMock(), response=response)
+        with patch.object(self.client._http, "request", return_value=response):
+            with pytest.raises(httpx.HTTPStatusError):
+                self.client.finalize_benchmark(2)
+
+    def test_facade_delegates(self):
+        client = EpiserveClient()
+        with patch.object(client.api, "get_leaderboard", return_value={"entries": []}) as call:
+            assert client.get_leaderboard(3, "rmse") == {"entries": []}
+        call.assert_called_once_with(3, "rmse", False)
+
+
 class TestEpisserveCkanClient:
     def test_show(self):
         client = EpisserveCkanClient("https://your-ckan-server")
@@ -119,6 +196,41 @@ class TestCLI:
             capture_output=True, text=True,
         )
         assert result.returncode == 0
+
+    def test_benchmark_help_lists_subcommands(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "client_cli.main", "benchmark", "--help"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0
+        for name in ("create", "finalize", "leaderboard", "add-entry", "remove-entry", "run-spec"):
+            assert name in result.stdout
+
+    def test_benchmark_commands_call_the_client(self, monkeypatch, capsys):
+        from client_cli import main as cli
+
+        calls = []
+
+        class Fake:
+            def __getattr__(self, name):
+                return lambda *a, **k: calls.append((name, a, k)) or {"ok": name}
+
+        monkeypatch.setattr(cli, "_api", lambda args: Fake())
+        for argv, expected in (
+            (["benchmark", "list"], ("list_benchmarks", (), {})),
+            (["benchmark", "leaderboard", "3", "--rank-by", "mae", "--all-runs"],
+             ("get_leaderboard", (3, "mae", True), {})),
+            (["benchmark", "add-entry", "3", "Q9"], ("add_benchmark_entry", (3, "Q9"), {})),
+            (["benchmark", "update", "3", '{"name": "x"}'], ("update_benchmark", (3,), {"name": "x"})),
+            (["benchmark", "create", '{"name": "x", "dataset_qid": "Q1"}'],
+             ("create_benchmark", (), {"name": "x", "dataset_qid": "Q1"})),
+            (["benchmark", "retire", "3"], ("retire_benchmark", (3,), {})),
+            (["benchmark", "remove-entry", "3", "7"], ("remove_benchmark_entry", (3, 7), {})),
+        ):
+            calls.clear()
+            monkeypatch.setattr(sys, "argv", ["episerve-client", *argv])
+            cli.main()
+            assert calls == [expected]
 
     def test_trigger_invalid_json(self, tmp_path):
         result = subprocess.run(

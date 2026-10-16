@@ -90,6 +90,36 @@ Returns `202` immediately with a `run_id`. Track the run with:
 episerve item show <run_id>
 ```
 
+### Benchmarks and leaderboards
+
+Reading needs no token; creating, changing, finalizing and adding runs need the daily token (`episerve login`).
+
+```bash
+episerve benchmark list                       # final benchmarks with entry counts
+episerve benchmark show 3
+episerve benchmark leaderboard 3 --rank-by mae --all-runs
+episerve benchmark run-spec 3                 # input URL (pinned commit), SQL, config for a model run
+
+# design one: create a draft, check it, then finalize (pins the current lakeFS commit)
+episerve benchmark create '{"name": "Influenza A+B 2026", "dataset_qid": "Q9493814122238",
+  "target_column": "viruslast_normalisiert", "date_column": "datum",
+  "filter_column": "typ", "filter_value": "Influenza A+B",
+  "test_start": "2026-04-01", "test_end": "2026-09-30"}'
+episerve benchmark check 3
+episerve benchmark finalize 3
+
+episerve benchmark update 3 '{"test_end": "2026-08-31"}'   # drafts only; null clears an optional field
+episerve benchmark copy 3                     # copy as a new draft
+episerve benchmark retire 3
+episerve benchmark drafts
+
+# after a run made from the benchmark has finished and CKAN knows it
+episerve benchmark add-entry 3 Q1788513584728
+episerve benchmark remove-entry 3 12
+```
+
+`create` accepts `name`, `dataset_qid`, `target_column`, `date_column`, `test_start`, `test_end` and the optional `description`, `filter_column`, `filter_value`, `history_start`, `history_end`, `input_filename`. Unlike the web designer, `finalize` does not refuse when the data changed since your `check`; it pins the lakeFS head at that moment.
+
 ### Global flags
 
 ```
@@ -122,6 +152,16 @@ components = client.item_list_components("Q1748526042817")
 
 # Download (component id as printed by item_list_components)
 client.item_download("Q1748526042817", "output/predictions.tsv", "predictions.tsv")
+
+# Benchmarks
+boards = client.list_benchmarks()
+board = client.get_leaderboard(3, rank_by="mae")
+draft = client.create_benchmark("Flu", "Q9493814122238", "viruslast_normalisiert", "datum",
+                                "2026-04-01", "2026-09-30", filter_column="typ", filter_value="Influenza A+B")
+client.check_benchmark(draft["id"])
+client.finalize_benchmark(draft["id"])
+spec = client.get_benchmark_run_spec(draft["id"])   # same shape as a model-run request
+client.add_benchmark_entry(draft["id"], "Q1788513584728")
 
 # Trigger
 result = client.trigger_model_run({

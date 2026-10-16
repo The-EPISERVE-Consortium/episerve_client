@@ -147,18 +147,60 @@ def cmd_item_download(args):
             sys.stdout.buffer.write(chunk)
 
 
-def cmd_trigger_model_run(args):
-    raw = args.params
+def _load_json(raw: str):
+    """Parse ``raw`` as the path of a JSON file or as inline JSON; exit with an error if it is neither."""
     try:
         with open(raw) as f:
-            params = json.load(f)
+            return json.load(f)
     except (FileNotFoundError, IsADirectoryError, OSError):
         try:
-            params = json.loads(raw)
+            return json.loads(raw)
         except json.JSONDecodeError:
             print(f"Error: '{raw}' is neither a valid file path nor valid JSON.", file=sys.stderr)
             sys.exit(1)
-    _out(_api(args).trigger_model_run(params), args.raw)
+
+
+def cmd_trigger_model_run(args):
+    _out(_api(args).trigger_model_run(_load_json(args.params)), args.raw)
+
+
+def cmd_benchmark(args):
+    if args.benchmark_command is None:
+        args._benchmark_parser.print_help(sys.stderr)
+        sys.exit(0)
+    client = _api(args)
+    command = args.benchmark_command
+    if command == "list":
+        result = client.list_benchmarks()
+    elif command == "drafts":
+        result = client.list_benchmark_drafts()
+    elif command == "show":
+        result = client.get_benchmark(args.id)
+    elif command == "create":
+        result = client.create_benchmark(**_load_json(args.params))
+    elif command == "update":
+        result = client.update_benchmark(args.id, **_load_json(args.params))
+    elif command == "check":
+        result = client.check_benchmark(args.id)
+    elif command == "finalize":
+        result = client.finalize_benchmark(args.id)
+    elif command == "copy":
+        result = client.copy_benchmark(args.id)
+    elif command == "retire":
+        client.retire_benchmark(args.id)
+        print(f"Benchmark {args.id} retired.", file=sys.stderr)
+        return
+    elif command == "run-spec":
+        result = client.get_benchmark_run_spec(args.id)
+    elif command == "leaderboard":
+        result = client.get_leaderboard(args.id, args.rank_by, args.all_runs)
+    elif command == "add-entry":
+        result = client.add_benchmark_entry(args.id, args.run_qid)
+    else:  # remove-entry
+        client.remove_benchmark_entry(args.id, args.entry_id)
+        print(f"Entry {args.entry_id} removed from benchmark {args.id}.", file=sys.stderr)
+        return
+    _out(result, args.raw)
 
 
 # --- parser ---
@@ -189,6 +231,8 @@ examples:
   episerve-client health
   episerve-client list runs
   episerve-client list datasets
+  episerve-client benchmark list
+  episerve-client benchmark leaderboard 3 --rank-by mae
   episerve-client item show Q1748526042817
   episerve-client item list-components Q1748526042817
   episerve-client item download Q1748526042817 output/predictions.tsv -o predictions.tsv
@@ -253,6 +297,37 @@ examples:
         help="Path to a JSON file or an inline JSON string with the model run parameters",
     )
 
+    # benchmark
+    bench_p = sub.add_parser("benchmark", help="Design benchmarks, read leaderboards, add runs")
+    bench_sub = bench_p.add_subparsers(dest="benchmark_command", required=False, metavar="<subcommand>")
+    bench_p.set_defaults(_benchmark_parser=bench_p)
+
+    def with_id(name, help_):
+        p = bench_sub.add_parser(name, help=help_)
+        p.add_argument("id", type=int, metavar="<benchmark-id>")
+        return p
+
+    bench_sub.add_parser("list", help="List final benchmarks")
+    bench_sub.add_parser("drafts", help="List draft benchmarks (needs a token)")
+    with_id("show", "Show one benchmark")
+    create_p = bench_sub.add_parser("create", help="Create a draft from a JSON file or inline JSON (needs a token)")
+    create_p.add_argument("params", metavar="<params>")
+    update_p = with_id("update", "Change fields of a draft from a JSON file or inline JSON (needs a token)")
+    update_p.add_argument("params", metavar="<params>")
+    with_id("check", "Check a draft against the current data")
+    with_id("finalize", "Pin the current data commit and make a draft final")
+    with_id("copy", "Copy a benchmark as a new draft")
+    with_id("retire", "Hide a benchmark from the lists")
+    with_id("run-spec", "Show the input files, SQL and config to run a model on a final benchmark")
+    lb_p = with_id("leaderboard", "Show the ranked leaderboard")
+    lb_p.add_argument("--rank-by", choices=["mae", "rmse", "coverage", "interval_score"],
+                      default="interval_score")
+    lb_p.add_argument("--all-runs", action="store_true", help="Every entry instead of each model's best")
+    add_p = with_id("add-entry", "Score a finished model run and add it to the leaderboard")
+    add_p.add_argument("run_qid", metavar="<run-QID>")
+    rm_p = with_id("remove-entry", "Remove an entry from the leaderboard")
+    rm_p.add_argument("entry_id", type=int, metavar="<entry-id>")
+
     return parser
 
 
@@ -269,6 +344,7 @@ def main():
         "health":             cmd_health,
         "list":               cmd_list,
         "trigger-model-run":  cmd_trigger_model_run,
+        "benchmark":          cmd_benchmark,
     }
 
     try:

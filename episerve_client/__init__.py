@@ -45,6 +45,47 @@ class EpiserveClient:
     def trigger_model_run(self, params: dict) -> dict:
         return self.api.trigger_model_run(params)
 
+    # --- benchmarks and leaderboard ---
+
+    def list_benchmarks(self) -> list[dict]:
+        return self.api.list_benchmarks()
+
+    def list_benchmark_drafts(self) -> list[dict]:
+        return self.api.list_benchmark_drafts()
+
+    def get_benchmark(self, benchmark_id: int) -> dict:
+        return self.api.get_benchmark(benchmark_id)
+
+    def create_benchmark(self, *args, **kwargs) -> dict:
+        return self.api.create_benchmark(*args, **kwargs)
+
+    def update_benchmark(self, benchmark_id: int, **fields) -> dict:
+        return self.api.update_benchmark(benchmark_id, **fields)
+
+    def check_benchmark(self, benchmark_id: int) -> dict:
+        return self.api.check_benchmark(benchmark_id)
+
+    def finalize_benchmark(self, benchmark_id: int) -> dict:
+        return self.api.finalize_benchmark(benchmark_id)
+
+    def copy_benchmark(self, benchmark_id: int) -> dict:
+        return self.api.copy_benchmark(benchmark_id)
+
+    def retire_benchmark(self, benchmark_id: int) -> None:
+        self.api.retire_benchmark(benchmark_id)
+
+    def get_benchmark_run_spec(self, benchmark_id: int) -> dict:
+        return self.api.get_benchmark_run_spec(benchmark_id)
+
+    def get_leaderboard(self, benchmark_id: int, rank_by: str = "interval_score", all_runs: bool = False) -> dict:
+        return self.api.get_leaderboard(benchmark_id, rank_by, all_runs)
+
+    def add_benchmark_entry(self, benchmark_id: int, run_qid: str) -> dict:
+        return self.api.add_benchmark_entry(benchmark_id, run_qid)
+
+    def remove_benchmark_entry(self, benchmark_id: int, entry_id: int) -> None:
+        self.api.remove_benchmark_entry(benchmark_id, entry_id)
+
     # --- CKAN ---
 
     def item_show(self, qid: str) -> dict:
