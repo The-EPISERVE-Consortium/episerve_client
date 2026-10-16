@@ -42,8 +42,17 @@ class EpiserveClient:
     def list_runs(self) -> list[dict]:
         return self.api.list_runs()
 
+    def get_run(self, run_id: str) -> dict:
+        return self.api.get_run(run_id)
+
     def trigger_model_run(self, params: dict) -> dict:
         return self.api.trigger_model_run(params)
+
+    def get_token(self, username: str, password: str) -> dict:
+        return self.api.get_token(username, password)
+
+    def get_token_status(self) -> dict:
+        return self.api.get_token_status()
 
     # --- benchmarks and leaderboard ---
 

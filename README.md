@@ -37,6 +37,12 @@ episerve list models
 episerve list runs
 ```
 
+### Model run status
+
+```bash
+episerve run show Q1748526042817     # status and metadata of one run via the API
+```
+
 ### Item details and components
 
 ```bash
@@ -162,6 +168,8 @@ client.check_benchmark(draft["id"])
 client.finalize_benchmark(draft["id"])
 spec = client.get_benchmark_run_spec(draft["id"])   # same shape as a model-run request
 client.add_benchmark_entry(draft["id"], "Q1788513584728")
+
+run = client.get_run("Q1748526042817")
 
 # Trigger
 result = client.trigger_model_run({

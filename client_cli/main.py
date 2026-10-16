@@ -164,6 +164,10 @@ def cmd_trigger_model_run(args):
     _out(_api(args).trigger_model_run(_load_json(args.params)), args.raw)
 
 
+def cmd_run_show(args):
+    _out(_api(args).get_run(args.run_id), args.raw)
+
+
 def cmd_benchmark(args):
     if args.benchmark_command is None:
         args._benchmark_parser.print_help(sys.stderr)
@@ -233,6 +237,7 @@ examples:
   episerve-client list datasets
   episerve-client benchmark list
   episerve-client benchmark leaderboard 3 --rank-by mae
+  episerve-client run show Q1748526042817
   episerve-client item show Q1748526042817
   episerve-client item list-components Q1748526042817
   episerve-client item download Q1748526042817 output/predictions.tsv -o predictions.tsv
@@ -297,6 +302,13 @@ examples:
         help="Path to a JSON file or an inline JSON string with the model run parameters",
     )
 
+    # run
+    run_p = sub.add_parser("run", help="Inspect a model run")
+    run_sub = run_p.add_subparsers(dest="run_command", required=False, metavar="<subcommand>")
+    run_p.set_defaults(_run_parser=run_p)
+    run_show_p = run_sub.add_parser("show", help="Show the status of one model run via the API")
+    run_show_p.add_argument("run_id", metavar="<run-QID>")
+
     # benchmark
     bench_p = sub.add_parser("benchmark", help="Design benchmarks, read leaderboards, add runs")
     bench_sub = bench_p.add_subparsers(dest="benchmark_command", required=False, metavar="<subcommand>")
@@ -348,7 +360,12 @@ def main():
     }
 
     try:
-        if args.command == "item":
+        if args.command == "run":
+            if args.run_command is None:
+                args._run_parser.print_help(sys.stderr)
+                sys.exit(0)
+            cmd_run_show(args)
+        elif args.command == "item":
             if args.item_command is None:
                 args._item_parser.print_help(sys.stderr)
                 sys.exit(0)

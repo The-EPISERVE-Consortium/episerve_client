@@ -22,6 +22,10 @@ class EpiserveApiClient:
     def list_runs(self) -> list[dict]:
         return self._get("/model-runs")
 
+    def get_run(self, run_id: str) -> dict:
+        """Status and metadata of one model run, by QID."""
+        return self._get(f"/model-runs/{run_id}")
+
     def get_token(self, username: str, password: str) -> dict:
         r = self._http.post("/auth/token", json={"username": username, "password": password})
         r.raise_for_status()

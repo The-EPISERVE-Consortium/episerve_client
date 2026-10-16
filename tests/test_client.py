@@ -28,6 +28,24 @@ class TestEpiserveApiClient:
         assert isinstance(result, list)
         assert result[0]["qid"] == "Q123"
 
+    def test_get_run(self):
+        client = EpiserveApiClient("https://your-api-server")
+        with patch.object(client._http, "get", return_value=_respond({"qid": "Q123", "status": "success"})) as get:
+            assert client.get_run("Q123")["status"] == "success"
+        assert get.call_args.args[0] == "/model-runs/Q123"
+
+    def test_facade_exposes_run_and_token_calls(self):
+        client = EpiserveClient()
+        with patch.object(client.api, "get_run", return_value={"qid": "Q1"}) as run, \
+                patch.object(client.api, "get_token", return_value={"token": "t"}) as token, \
+                patch.object(client.api, "get_token_status", return_value={"expires_at": "x"}) as status:
+            assert client.get_run("Q1") == {"qid": "Q1"}
+            assert client.get_token("u", "p") == {"token": "t"}
+            assert client.get_token_status() == {"expires_at": "x"}
+        run.assert_called_once_with("Q1")
+        token.assert_called_once_with("u", "p")
+        status.assert_called_once_with()
+
     def test_trigger_model_run(self):
         client = EpiserveApiClient("https://your-api-server")
         mock_response = MagicMock()
@@ -231,6 +249,21 @@ class TestCLI:
             monkeypatch.setattr(sys, "argv", ["episerve-client", *argv])
             cli.main()
             assert calls == [expected]
+
+    def test_run_show_calls_the_client(self, monkeypatch):
+        from client_cli import main as cli
+
+        seen = []
+
+        class Fake:
+            def get_run(self, run_id):
+                seen.append(run_id)
+                return {"qid": run_id}
+
+        monkeypatch.setattr(cli, "_api", lambda args: Fake())
+        monkeypatch.setattr(sys, "argv", ["episerve-client", "run", "show", "Q77"])
+        cli.main()
+        assert seen == ["Q77"]
 
     def test_trigger_invalid_json(self, tmp_path):
         result = subprocess.run(
