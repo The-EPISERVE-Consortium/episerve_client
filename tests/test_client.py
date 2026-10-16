@@ -291,3 +291,75 @@ class TestCLI:
                 capture_output=True, text=True, env={**__import__("os").environ, "EPISERVE_API_URL": "http://localhost:8000"},
             )
         assert result.returncode in (0, 1)
+
+
+def _all_parsers(parser, path=()):
+    """Yield (command path, parser) for every subcommand, depth first."""
+    import argparse
+
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for name, sub in action.choices.items():
+                yield (*path, name), sub
+                yield from _all_parsers(sub, (*path, name))
+
+
+class TestHelpScreens:
+    def test_every_command_documents_itself(self):
+        from client_cli.main import _build_parser
+
+        commands = dict(_all_parsers(_build_parser()))
+        assert ("benchmark", "create") in commands and ("login", "status") in commands
+        for path, sub in commands.items():
+            text = sub.format_help()
+            label = " ".join(path)
+            assert text.startswith("usage: episerve-client [global options] " + path[0]), label
+            assert sub.description, f"{label} has no description"
+            assert "global options (also accepted before the command)" in text, label
+            assert "--api-url" in text and "--raw" in text, label
+
+    def test_list_help_explains_the_types_and_points_elsewhere(self):
+        from client_cli.main import _build_parser
+
+        text = _build_parser()._subparsers._group_actions[0].choices["list"].format_help()
+        for expected in ("datasets", "models", "runs", "benchmark list", "run show <QID>", "examples:"):
+            assert expected in text
+
+    def test_commands_that_need_a_login_say_so(self):
+        from client_cli.main import _build_parser
+
+        commands = dict(_all_parsers(_build_parser()))
+        for path in (("trigger-model-run",), ("benchmark", "create"), ("benchmark", "finalize"),
+                     ("benchmark", "add-entry"), ("benchmark", "remove-entry"), ("benchmark", "drafts")):
+            assert "requires a token" in commands[path].format_help(), path
+        assert "requires a token" not in commands[("benchmark", "leaderboard")].format_help()
+
+    def test_top_level_help_lists_the_environment(self):
+        from client_cli.main import _build_parser
+
+        text = _build_parser().format_help()
+        for expected in ("EPISERVE_API_URL", "EPISERVE_API_KEY", "EPISERVE_NO_CLIENT_UPDATE_CHECK", "--cli-version"):
+            assert expected in text
+
+    def test_global_options_work_before_and_after_the_command(self):
+        from client_cli.main import _build_parser
+
+        parser = _build_parser()
+        for argv in (["--raw", "--api-url", "http://a", "list", "runs"],
+                     ["list", "runs", "--raw", "--api-url", "http://a"],
+                     ["--api-url", "http://a", "list", "--raw", "runs"]):
+            args = parser.parse_args(argv)
+            assert args.raw is True and args.api_url == "http://a" and args.type == "runs"
+
+    def test_global_options_default_when_not_given(self):
+        from client_cli.main import _build_parser
+
+        args = _build_parser().parse_args(["benchmark", "leaderboard", "3"])
+        assert args.raw is False and args.api_url is None and args.api_key is None
+        assert args.no_update_check is False and args.rank_by == "interval_score"
+
+    def test_a_flag_given_before_the_command_survives_a_subcommand_default(self):
+        from client_cli.main import _build_parser
+
+        args = _build_parser().parse_args(["--api-key", "tok", "item", "download", "Q1", "c"])
+        assert args.api_key == "tok"

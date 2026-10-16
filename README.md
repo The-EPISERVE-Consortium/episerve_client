@@ -154,13 +154,20 @@ To cut a release, push a tag such as `v0.1.14`: the workflow builds the three bi
 
 ### Global flags
 
+These work before or after the command (`episerve --raw list runs` and `episerve list runs --raw` are the same):
+
 ```
---api-url   Override EPISERVE_API_URL
---ckan-url  Override EPISERVE_CKAN_URL
---doip-url  Override EPISERVE_DOIP_URL
---api-key   Override EPISERVE_API_KEY
---raw       Compact JSON output (no indentation)
+--api-url          Override EPISERVE_API_URL
+--ckan-url         Override EPISERVE_CKAN_URL
+--doip-url         Override EPISERVE_DOIP_URL
+--api-key          Override EPISERVE_API_KEY
+--raw              Compact JSON output (no indentation)
+--no-update-check  Skip the automatic update check
 ```
+
+### Help
+
+`episerve -h` lists the commands, examples and environment variables. `episerve <command> -h` (for example `episerve list -h` or `episerve benchmark create -h`) shows what the command does, its arguments, whether it needs a login, the JSON fields it accepts and examples.
 
 ## Python library usage
 

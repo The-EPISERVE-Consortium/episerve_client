@@ -266,130 +266,307 @@ def _print_short_help(parser: argparse.ArgumentParser) -> None:
     print("  -h, --help           show extended help and exit", file=sys.stderr)
 
 
+_ENV_HELP = """\
+environment (read from the shell or from ./.env; flags win over both):
+  EPISERVE_API_URL                  API server        (--api-url)
+  EPISERVE_CKAN_URL                 CKAN catalog      (--ckan-url)
+  EPISERVE_DOIP_URL                 DOIP server       (--doip-url)
+  EPISERVE_API_KEY                  daily token       (--api-key; 'login' saves it)
+  EPISERVE_USERNAME / _PASSWORD     used by 'login' when -u/-p are not given
+  EPISERVE_NO_CLIENT_UPDATE_CHECK=1 skip the automatic update check
+"""
+
+_LOGIN_NOTE = "requires a token: run 'episerve-client login' first (the token is valid for one day)."
+
+
+def _add_global_options(target: argparse.ArgumentParser, *, top: bool) -> None:
+    """Add the options shared by every command.
+
+    On subcommands the defaults are suppressed so a value given before the command is not overwritten,
+    which makes the options work both before and after the command name.
+    """
+    group = target.add_argument_group(
+        "global options" if top else "global options (also accepted before the command)"
+    )
+    extra = {} if top else {"default": argparse.SUPPRESS}
+    group.add_argument("--api-url", metavar="URL", help="API server URL (default: $EPISERVE_API_URL)", **extra)
+    group.add_argument("--ckan-url", metavar="URL",
+                       help="CKAN URL, used by 'item show' (default: $EPISERVE_CKAN_URL)", **extra)
+    group.add_argument("--doip-url", metavar="URL",
+                       help="DOIP server URL, used by 'item list-components' and 'item download' "
+                            "(default: $EPISERVE_DOIP_URL)", **extra)
+    group.add_argument("--api-key", metavar="KEY",
+                       help="bearer token for commands that need a login (default: $EPISERVE_API_KEY)", **extra)
+    group.add_argument("--raw", action="store_true", help="compact JSON output, no indentation", **extra)
+    group.add_argument("--no-update-check", action="store_true",
+                       help=f"skip the automatic update check (also {update_check.ENV_OPT_OUT}=1)", **extra)
+
+
+def _command(subparsers, name: str, help_: str, *, usage: str, description: str,
+             examples: str = "", notes: str = "") -> argparse.ArgumentParser:
+    """Add a subcommand with a usage line, description, notes, examples and the global options."""
+    epilog = ""
+    if notes:
+        epilog += notes.rstrip() + "\n\n"
+    if examples:
+        epilog += "examples:\n" + "".join(f"  {line}\n" for line in examples.strip().splitlines())
+    parser = subparsers.add_parser(
+        name, help=help_, usage=f"episerve-client [global options] {usage}", description=description,
+        epilog=epilog or None, formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    _add_global_options(parser, top=False)
+    return parser
+
+
+def _subcommands(parser: argparse.ArgumentParser, dest: str):
+    return parser.add_subparsers(dest=dest, required=False, metavar="<subcommand>", title="subcommands")
+
+
+_BENCHMARK_FIELDS = """\
+JSON fields:
+  required   name, dataset_qid, target_column, date_column, test_start, test_end   (dates: YYYY-MM-DD)
+  optional   description, filter_column, filter_value, history_start, history_end, input_filename
+  - filter_column/filter_value: one equality filter that selects a single series
+  - history_end: empty = the last observation before test_start
+  - input_filename: name the model sees (default input.parquet)
+"""
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="episerve-client",
-        description="CLI for the EPISERVE epidemiological surveillance platform.",
+        usage="episerve-client [global options] <command> [<args>]",
+        description="CLI for the EPISERVE epidemiological surveillance platform.\n"
+                    "Run 'episerve-client <command> -h' for the details of a command.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
-        epilog="""
-examples:
+        epilog="""examples:
   episerve-client login
-  episerve-client login status
   episerve-client health
   episerve-client list runs
-  episerve-client list datasets
-  episerve-client --cli-version
-  episerve-client benchmark list
-  episerve-client benchmark leaderboard 3 --rank-by mae
   episerve-client run show Q1748526042817
-  episerve-client item show Q1748526042817
-  episerve-client item list-components Q1748526042817
+  episerve-client benchmark leaderboard 3 --rank-by mae
   episerve-client item download Q1748526042817 output/predictions.tsv -o predictions.tsv
-""",
+  episerve-client --cli-version
+
+""" + _ENV_HELP,
     )
     parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS,
-                        help="show extended help and exit")
-    parser.add_argument("--api-url",  metavar="URL", help="set the API server URL (controls all list/trigger commands)")
-    parser.add_argument("--ckan-url", metavar="URL", help="set the CKAN URL (controls item show)")
-    parser.add_argument("--doip-url", metavar="URL", help="set the DOIP server URL (controls item list-components and download)")
-    parser.add_argument("--api-key",  metavar="KEY", help="set the bearer token for authenticated API requests")
-    parser.add_argument("--raw", action="store_true", help="Compact JSON output (no indentation)")
+                        help="show this help and exit")
     parser.add_argument("--cli-version", "--version", dest="cli_version", action="store_true",
                         help="print this client's version, check whether a newer release exists and exit "
                              "(exit codes: 0 up to date, 1 update available, 2 check failed)")
-    parser.add_argument("--no-update-check", action="store_true",
-                        help="skip the automatic startup update check "
-                             f"(also {update_check.ENV_OPT_OUT}=1)")
+    _add_global_options(parser, top=True)
 
-    sub = parser.add_subparsers(dest="command", required=False, metavar="<command>")
+    sub = parser.add_subparsers(dest="command", required=False, metavar="<command>", title="commands")
 
     # login
-    login_p = sub.add_parser("login", help="Authenticate and manage tokens")
-    login_p.add_argument("--username", "-u", metavar="<username>")
-    login_p.add_argument("--password", "-p", metavar="<password>")
-    login_sub = login_p.add_subparsers(dest="login_command", metavar="<subcommand>")
-    login_sub.add_parser("status", help="Check whether the current token is valid and show expiry")
+    login_p = _command(
+        sub, "login", "Authenticate and manage tokens", usage="login [-u USER] [-p PASSWORD] | login status",
+        description="Log in to the API server and save the daily token as EPISERVE_API_KEY in ./.env.\n"
+                    "Commands that change data (trigger-model-run, benchmark create/finalize/...) need it.",
+        examples="episerve-client login -u alice -p secret\nepiserve-client login status",
+        notes="Without -u/-p the values EPISERVE_USERNAME and EPISERVE_PASSWORD are used.",
+    )
+    login_p.add_argument("--username", "-u", metavar="<username>", help="user name")
+    login_p.add_argument("--password", "-p", metavar="<password>", help="password")
+    login_sub = _subcommands(login_p, "login_command")
+    _command(login_sub, "status", "Check whether the current token is valid and show expiry",
+             usage="login status", description="Check the token in EPISERVE_API_KEY and show when it expires.")
 
     # health
-    sub.add_parser("health", help="Check API server health")
+    _command(sub, "health", "Check API server health", usage="health",
+             description="Ask the API server whether it is up. Prints {\"status\": \"ok\"}.")
 
     # list
-    list_p = sub.add_parser("list", help="List items of a given type")
-    list_p.add_argument(
-        "type",
-        choices=["datasets", "models", "runs"],
-        metavar="<type>",
-        nargs="?",
-        default=None,
-        help="datasets | models | runs",
+    list_p = _command(
+        sub, "list", "List datasets, models or model runs", usage="list <type>",
+        description="List items from the EPISERVE API server as JSON.\n\n"
+                    "types:\n"
+                    "  datasets   processed datasets in the catalog (QID, name, description, DOIP link, ...)\n"
+                    "  models     registered forecast models (docker image and tag, description, ...)\n"
+                    "  runs       all model runs with status, timestamps and input/output files",
+        notes="see also:\n"
+              "  benchmark list     final benchmarks (episerve-client benchmark -h)\n"
+              "  run show <QID>     one model run\n"
+              "  item show <QID>    the full catalog record of any item",
+        examples="episerve-client list runs\n"
+                 "episerve-client --raw list datasets | jq '.[].qid'\n"
+                 "episerve-client list models --api-url http://localhost:8000",
     )
+    list_p.add_argument("type", choices=["datasets", "models", "runs"], metavar="<type>", nargs="?",
+                        default=None, help="datasets | models | runs")
     list_p.set_defaults(_list_parser=list_p)
 
     # item
-    item_p = sub.add_parser("item", help="Interact with a specific item by QID")
-    item_sub = item_p.add_subparsers(dest="item_command", required=False, metavar="<subcommand>")
+    item_p = _command(
+        sub, "item", "Show an item or download its files by QID", usage="item <subcommand> <QID> ...",
+        description="Look at any catalog item (dataset, model or model run) by its QID, e.g. Q1748526042817.\n"
+                    "'show' reads the CKAN record; 'list-components' and 'download' use the DOIP server.",
+        examples="episerve-client item show Q1748526042817\n"
+                 "episerve-client item list-components Q1748526042817\n"
+                 "episerve-client item download Q1748526042817 output/predictions.tsv -o predictions.tsv",
+    )
+    item_sub = _subcommands(item_p, "item_command")
     item_p.set_defaults(_item_parser=item_p)
 
-    show_p = item_sub.add_parser("show", help="Show item details from CKAN")
-    show_p.add_argument("qid", metavar="<QID>")
+    show_p = _command(item_sub, "show", "Show item details from CKAN", usage="item show <QID>",
+                      description="Print the CKAN record of an item as JSON (needs --ckan-url).")
+    show_p.add_argument("qid", metavar="<QID>", help="item id, e.g. Q1748526042817")
 
-    lc_p = item_sub.add_parser("list-components", help="List FDO components via DOIP")
-    lc_p.add_argument("qid", metavar="<QID>")
+    lc_p = _command(item_sub, "list-components", "List FDO components via DOIP",
+                    usage="item list-components <QID>",
+                    description="List the files (components) of an item. Use the printed ids with 'item download'.")
+    lc_p.add_argument("qid", metavar="<QID>", help="item id")
 
-    dl_p = item_sub.add_parser("download", help="Download a component via DOIP")
-    dl_p.add_argument("qid", metavar="<QID>")
+    dl_p = _command(
+        item_sub, "download", "Download a component via DOIP", usage="item download <QID> <component-id> [-o FILE]",
+        description="Download one file of an item from the DOIP server. Without -o the bytes go to stdout.",
+        examples="episerve-client item download Q1748526042817 output/predictions.tsv -o predictions.tsv\n"
+                 "episerve-client item download Q1748526042817 output/predictions.tsv | head",
+    )
+    dl_p.add_argument("qid", metavar="<QID>", help="item id")
     dl_p.add_argument("component_id", metavar="<component-id>",
-                      help="component id as printed by 'item list-components', "
-                           "e.g. output/predictions.tsv")
-    dl_p.add_argument("--output", "-o", metavar="<file>",
-                      help="Output file path (default: stdout)")
+                      help="component id as printed by 'item list-components', e.g. output/predictions.tsv")
+    dl_p.add_argument("--output", "-o", metavar="<file>", help="output file path (default: stdout)")
 
     # trigger-model-run
-    trigger_p = sub.add_parser("trigger-model-run", help="Trigger a model run via the API")
-    trigger_p.add_argument(
-        "params",
-        metavar="<params>",
-        help="Path to a JSON file or an inline JSON string with the model run parameters",
+    trigger_p = _command(
+        sub, "trigger-model-run", "Trigger a model run via the API", usage="trigger-model-run <params>",
+        description="Start a model run. <params> is the path of a JSON file or an inline JSON string.\n"
+                    "Returns at once (202) with a run_id; follow it with 'run show <run_id>'.",
+        notes="JSON fields:\n"
+              "  model_image             docker image, e.g. ghcr.io/the-episerve-consortium/model__prediction__...\n"
+              "  model_tag               image tag (default latest)\n"
+              "  input_data_files        list of [source_uri, target_filename] pairs (lakefs:// or DOIP URL)\n"
+              "  config                  the model's own parameters, e.g. {\"horizon_weeks\": 4}\n"
+              "  data_transformation_sql optional list, one DuckDB filter per input, run on a table 'df'\n\n"
+              + _LOGIN_NOTE,
+        examples="episerve-client trigger-model-run params.json\n"
+                 "episerve-client trigger-model-run '{\"model_image\": \"ghcr.io/...\", "
+                 "\"input_data_files\": [[\"https://...\", \"input.parquet\"]], \"config\": {}}'\n"
+                 "episerve-client benchmark run-spec 3     # a ready-made start for a benchmark run",
     )
+    trigger_p.add_argument("params", metavar="<params>", help="path to a JSON file, or an inline JSON string")
 
     # run
-    run_p = sub.add_parser("run", help="Inspect a model run")
-    run_sub = run_p.add_subparsers(dest="run_command", required=False, metavar="<subcommand>")
+    run_p = _command(sub, "run", "Inspect a model run", usage="run <subcommand> <QID>",
+                     description="Inspect a model run through the API server.")
+    run_sub = _subcommands(run_p, "run_command")
     run_p.set_defaults(_run_parser=run_p)
-    run_show_p = run_sub.add_parser("show", help="Show the status of one model run via the API")
-    run_show_p.add_argument("run_id", metavar="<run-QID>")
+    run_show_p = _command(
+        run_sub, "show", "Show the status of one model run via the API", usage="run show <run-QID>",
+        description="Print status, timestamps, computation time and input/output files of one run as JSON.",
+        examples="episerve-client run show Q1748526042817",
+    )
+    run_show_p.add_argument("run_id", metavar="<run-QID>", help="the run's id, as printed by 'list runs'")
 
     # benchmark
-    bench_p = sub.add_parser("benchmark", help="Design benchmarks, read leaderboards, add runs")
-    bench_sub = bench_p.add_subparsers(dest="benchmark_command", required=False, metavar="<subcommand>")
+    bench_p = _command(
+        sub, "benchmark", "Design benchmarks, read leaderboards, add runs", usage="benchmark <subcommand> ...",
+        description="A benchmark fixes a series, a test window and a data version; model runs made from it\n"
+                    "are scored once and ranked on its leaderboard.\n\n"
+                    "typical flow:\n"
+                    "  create -> check -> finalize          design (needs a login)\n"
+                    "  run-spec -> trigger-model-run        run a model on the pinned data\n"
+                    "  add-entry -> leaderboard             score the finished run, read the ranking",
+        notes="Reading (list, show, run-spec, leaderboard) needs no login; everything else does.",
+        examples="episerve-client benchmark list\n"
+                 "episerve-client benchmark leaderboard 3 --rank-by mae\n"
+                 "episerve-client benchmark add-entry 3 Q1788513584728",
+    )
+    bench_sub = _subcommands(bench_p, "benchmark_command")
     bench_p.set_defaults(_benchmark_parser=bench_p)
 
-    def with_id(name, help_):
-        p = bench_sub.add_parser(name, help=help_)
-        p.add_argument("id", type=int, metavar="<benchmark-id>")
+    def with_id(name, help_, *, description, examples="", notes=""):
+        p = _command(bench_sub, name, help_, usage=f"benchmark {name} <benchmark-id>", description=description,
+                     examples=examples, notes=notes)
+        p.add_argument("id", type=int, metavar="<benchmark-id>", help="id as printed by 'benchmark list'")
         return p
 
-    bench_sub.add_parser("list", help="List final benchmarks")
-    bench_sub.add_parser("drafts", help="List draft benchmarks (needs a token)")
-    with_id("show", "Show one benchmark")
-    create_p = bench_sub.add_parser("create", help="Create a draft from a JSON file or inline JSON (needs a token)")
-    create_p.add_argument("params", metavar="<params>")
-    update_p = with_id("update", "Change fields of a draft from a JSON file or inline JSON (needs a token)")
-    update_p.add_argument("params", metavar="<params>")
-    with_id("check", "Check a draft against the current data")
-    with_id("finalize", "Pin the current data commit and make a draft final")
-    with_id("copy", "Copy a benchmark as a new draft")
-    with_id("retire", "Hide a benchmark from the lists")
-    with_id("run-spec", "Show the input files, SQL and config to run a model on a final benchmark")
-    lb_p = with_id("leaderboard", "Show the ranked leaderboard")
+    _command(bench_sub, "list", "List final benchmarks", usage="benchmark list",
+             description="List the final benchmarks with their entry counts.")
+    _command(bench_sub, "drafts", "List draft benchmarks (needs a token)", usage="benchmark drafts",
+             description="List benchmarks that are still drafts.", notes=_LOGIN_NOTE)
+    with_id("show", "Show one benchmark", description="Show the definition and state of one benchmark.",
+            notes="Drafts are only visible with a token.")
+
+    create_p = _command(
+        bench_sub, "create", "Create a draft from a JSON file or inline JSON (needs a token)",
+        usage="benchmark create <params>",
+        description="Create a draft benchmark. <params> is the path of a JSON file or an inline JSON string.",
+        notes=_BENCHMARK_FIELDS + "\n" + _LOGIN_NOTE,
+        examples="episerve-client benchmark create '{\"name\": \"Influenza A+B 2026\", "
+                 "\"dataset_qid\": \"Q9493814122238\", \"target_column\": \"viruslast_normalisiert\", "
+                 "\"date_column\": \"datum\", \"filter_column\": \"typ\", \"filter_value\": \"Influenza A+B\", "
+                 "\"test_start\": \"2026-04-01\", \"test_end\": \"2026-09-30\"}'\n"
+                 "episerve-client benchmark create benchmark.json",
+    )
+    create_p.add_argument("params", metavar="<params>", help="path to a JSON file, or an inline JSON string")
+
+    update_p = with_id(
+        "update", "Change fields of a draft from a JSON file or inline JSON (needs a token)",
+        description="Change fields of a draft. Only the fields in <params> change; null clears an optional field.\n"
+                    "Final benchmarks cannot be changed: use 'benchmark copy' to start a new draft.",
+        notes=_BENCHMARK_FIELDS + "\n" + _LOGIN_NOTE,
+        examples="episerve-client benchmark update 3 '{\"test_end\": \"2026-08-31\"}'\n"
+                 "episerve-client benchmark update 3 '{\"filter_column\": null, \"filter_value\": null}'",
+    )
+    update_p.add_argument("params", metavar="<params>", help="path to a JSON file, or an inline JSON string")
+
+    with_id("check", "Check a draft against the current data",
+            description="Read the data at the current lakeFS head and report problems (which block finalizing),\n"
+                        "warnings, the forecast length and the generated input SQL. Stores nothing.",
+            notes=_LOGIN_NOTE)
+    with_id("finalize", "Pin the current data commit and make a draft final",
+            description="Freeze a draft: pins the current lakeFS commit and makes the benchmark immutable.\n"
+                        "Unlike the web designer this does not compare with the commit of an earlier 'check';\n"
+                        "it pins whatever the lakeFS head is at that moment.",
+            notes=_LOGIN_NOTE)
+    with_id("copy", "Copy a benchmark as a new draft",
+            description="Create a new draft with the same definition. This is how a final benchmark is changed.",
+            notes=_LOGIN_NOTE)
+    with_id("retire", "Hide a benchmark from the lists",
+            description="Retire a benchmark: it disappears from the lists and takes no new entries,\n"
+                        "but its leaderboard stays readable.", notes=_LOGIN_NOTE)
+    with_id("run-spec", "Show the input files, SQL and config to run a model on a final benchmark",
+            description="Print what a model run needs to use the benchmark's pinned data: the input URL\n"
+                        "(with ?version=<data commit>), the SQL, the file name and the forecast length.\n"
+                        "The output has the shape of a model-run request.",
+            examples="episerve-client benchmark run-spec 3 > spec.json   # add model_image and the model's own "
+                     "config, then trigger-model-run")
+
+    lb_p = with_id(
+        "leaderboard", "Show the ranked leaderboard",
+        description="Show the stored ranking of a benchmark. Each model appears once with its best entry\n"
+                    "unless --all-runs is given.",
+        notes="--rank-by:\n"
+              "  mae             mean absolute error (lower is better)\n"
+              "  rmse            root mean squared error (lower is better)\n"
+              "  coverage        share of observations inside the 80% interval (closest to 0.8 is best)\n"
+              "  interval_score  width of the 80% interval plus a penalty for misses (lower is better; default)",
+        examples="episerve-client benchmark leaderboard 3\n"
+                 "episerve-client benchmark leaderboard 3 --rank-by mae --all-runs",
+    )
     lb_p.add_argument("--rank-by", choices=["mae", "rmse", "coverage", "interval_score"],
-                      default="interval_score")
-    lb_p.add_argument("--all-runs", action="store_true", help="Every entry instead of each model's best")
-    add_p = with_id("add-entry", "Score a finished model run and add it to the leaderboard")
-    add_p.add_argument("run_qid", metavar="<run-QID>")
-    rm_p = with_id("remove-entry", "Remove an entry from the leaderboard")
-    rm_p.add_argument("entry_id", type=int, metavar="<entry-id>")
+                      default="interval_score", help="ranking metric (default: interval_score)")
+    lb_p.add_argument("--all-runs", action="store_true", help="every entry instead of each model's best")
+
+    add_p = with_id(
+        "add-entry", "Score a finished model run and add it to the leaderboard",
+        description="Score a finished model run against the benchmark and add it to the leaderboard.\n"
+                    "The run must have read its input at the benchmark's pinned commit and have succeeded.\n"
+                    "It can take up to about an hour after a run finishes until it is known to the catalog.",
+        notes="If the run is refused, the reason is printed and nothing is stored.\n" + _LOGIN_NOTE,
+        examples="episerve-client benchmark add-entry 3 Q1788513584728",
+    )
+    add_p.add_argument("run_qid", metavar="<run-QID>", help="the finished model run")
+    rm_p = with_id(
+        "remove-entry", "Remove an entry from the leaderboard",
+        description="Remove an entry (soft delete). Add the run again to recompute its scores.",
+        notes=_LOGIN_NOTE,
+    )
+    rm_p.add_argument("entry_id", type=int, metavar="<entry-id>", help="entry id, as shown in 'benchmark leaderboard'")
 
     return parser
 
