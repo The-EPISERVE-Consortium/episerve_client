@@ -29,7 +29,9 @@ def _print_banner() -> None:
 
 import httpx
 
+from client_cli import update_check
 from episerve_client import EpiserveApiClient, EpisserveCkanClient, EpiserveDoipClient
+from episerve_client.version import __version__
 
 
 # --- helpers ---
@@ -55,6 +57,48 @@ def _doip(args) -> EpiserveDoipClient:
     url = args.doip_url or os.environ.get("EPISERVE_DOIP_URL", "https://my-doip-server")
     print(f"  → {url}", file=sys.stderr)
     return EpiserveDoipClient(url)
+
+
+# --- update check ---
+
+def _maybe_announce_update(args) -> None:
+    """Print an update notice on stderr when a newer release exists.
+
+    Best-effort and silent on every failure, so it never affects the command's
+    output or exit code.
+    """
+    if not update_check.should_check(no_update_check=args.no_update_check):
+        return
+    info = update_check.check_for_update(__version__)
+    if info:
+        print(update_check.format_notice(info), file=sys.stderr)
+
+
+def _run_cli_version() -> int:
+    """Handle ``--cli-version``: print the version, then report on updates.
+
+    The version goes to stdout so it can be captured; the update status goes to
+    stderr. This queries the network directly (bypassing the cache) and reports
+    failures rather than staying silent.
+
+    Returns:
+        int: 0 when up to date (or a development build), 1 when a newer release
+        exists, 2 when the lookup itself failed.
+    """
+    print(f"episerve-client {__version__}")
+    if update_check._is_placeholder(update_check.parse_version(__version__)):
+        print("No update check was performed: this is a development build.", file=sys.stderr)
+        return 0
+    try:
+        info = update_check.check_explicitly(__version__)
+    except Exception:
+        print(f"Cannot reach {update_check.HOST} to check for updates.", file=sys.stderr)
+        return 2
+    if info:
+        print(update_check.format_notice(info), file=sys.stderr)
+        return 1
+    print("This is the latest release.", file=sys.stderr)
+    return 0
 
 
 # --- command handlers ---
@@ -235,6 +279,7 @@ examples:
   episerve-client health
   episerve-client list runs
   episerve-client list datasets
+  episerve-client --cli-version
   episerve-client benchmark list
   episerve-client benchmark leaderboard 3 --rank-by mae
   episerve-client run show Q1748526042817
@@ -250,8 +295,14 @@ examples:
     parser.add_argument("--doip-url", metavar="URL", help="set the DOIP server URL (controls item list-components and download)")
     parser.add_argument("--api-key",  metavar="KEY", help="set the bearer token for authenticated API requests")
     parser.add_argument("--raw", action="store_true", help="Compact JSON output (no indentation)")
+    parser.add_argument("--cli-version", "--version", dest="cli_version", action="store_true",
+                        help="print this client's version, check whether a newer release exists and exit "
+                             "(exit codes: 0 up to date, 1 update available, 2 check failed)")
+    parser.add_argument("--no-update-check", action="store_true",
+                        help="skip the automatic startup update check "
+                             f"(also {update_check.ENV_OPT_OUT}=1)")
 
-    sub = parser.add_subparsers(dest="command", required=True, metavar="<command>")
+    sub = parser.add_subparsers(dest="command", required=False, metavar="<command>")
 
     # login
     login_p = sub.add_parser("login", help="Authenticate and manage tokens")
@@ -350,6 +401,11 @@ def main():
         _print_short_help(parser)
         sys.exit(0)
     args = parser.parse_args()
+    if args.cli_version:
+        sys.exit(_run_cli_version())
+    if args.command is None:
+        parser.error("a command is required")
+    _maybe_announce_update(args)
 
     dispatch = {
         "login":              cmd_login,

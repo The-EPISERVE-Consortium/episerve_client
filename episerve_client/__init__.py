@@ -1,6 +1,7 @@
 from .api_client import EpiserveApiClient
 from .ckan_client import EpisserveCkanClient
 from .doip_client import EpiserveDoipClient
+from .version import __version__
 
 
 class EpiserveClient:
@@ -117,4 +118,4 @@ class EpiserveClient:
                 sys.stdout.buffer.write(chunk)
 
 
-__all__ = ["EpiserveClient", "EpiserveApiClient", "EpisserveCkanClient", "EpiserveDoipClient"]
+__all__ = ["__version__", "EpiserveClient", "EpiserveApiClient", "EpisserveCkanClient", "EpiserveDoipClient"]

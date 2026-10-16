@@ -126,6 +126,32 @@ episerve benchmark remove-entry 3 12
 
 `create` accepts `name`, `dataset_qid`, `target_column`, `date_column`, `test_start`, `test_end` and the optional `description`, `filter_column`, `filter_value`, `history_start`, `history_end`, `input_filename`. Unlike the web designer, `finalize` does not refuse when the data changed since your `check`; it pins the lakeFS head at that moment.
 
+### Version and update check
+
+Released binaries are stamped with their git tag at build time (the `Stamp version` step of the build workflow writes `episerve_client/version.py`), so the client knows its own version:
+
+```bash
+episerve --cli-version        # alias: --version
+episerve-client 0.1.13
+```
+
+The version goes to stdout, the update status to stderr. Exit codes: `0` up to date (or a development build), `1` a newer release exists, `2` the lookup failed (the version is still printed).
+
+```bash
+if episerve --cli-version; then echo current; fi     # usable as a script or CI gate
+```
+
+When started interactively, the client also checks at most once a day whether a newer release exists and prints a notice on stderr, never stdout. Prereleases (`rc` tags) are never offered. The check is skipped for development builds (`0.0.0.dev0`, source checkouts), in CI and when stderr is not a terminal.
+
+```bash
+episerve --no-update-check health          # skip the startup check for this run
+EPISERVE_NO_CLIENT_UPDATE_CHECK=1 episerve health
+```
+
+It queries the repository's git ref endpoint (the one `git ls-remote` uses): no token, no GitHub API rate limit. It is best-effort: no network, a timeout or an unparseable response all count as "no update" and never affect the command you ran. The result is cached for 24 hours in `~/.cache/episerve/client-update-check.json` (`%LOCALAPPDATA%\episerve\` on Windows). In Python, `episerve_client.__version__` holds the version.
+
+To cut a release, push a tag such as `v0.1.14`: the workflow builds the three binaries stamped `0.1.14` and publishes them as a GitHub release.
+
 ### Global flags
 
 ```
