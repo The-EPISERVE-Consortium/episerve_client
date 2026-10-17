@@ -325,10 +325,13 @@ def _subcommands(parser: argparse.ArgumentParser, dest: str):
 _BENCHMARK_FIELDS = """\
 JSON fields:
   required   name, dataset_qid, target_column, date_column, test_start, test_end   (dates: YYYY-MM-DD)
-  optional   description, filters, history_start, history_end, input_filename
+  optional   description, filters, covariates, history_start, history_end, input_filename
   - filters: equality filters that together select a single series, e.g.
              [{"column": "Bundesland_id", "value": "5"}, {"column": "Altersgruppe", "value": "35-59"}]
              (filter_column/filter_value still work for one filter)
+  - covariates: further data sources whose columns are added to the model input, e.g.
+             [{"name": "wetter", "dataset_qid": "Q...", "date_column": "datum", "columns": ["temp"],
+               "filters": [], "aggregation": "mean"}]   (aggregation: mean | sum | last)
   - history_end: empty = the last observation before test_start
   - input_filename: name the model sees (default input.parquet)
 """
