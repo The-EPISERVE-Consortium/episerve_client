@@ -114,7 +114,7 @@ def cmd_login(args):
     if not username or not password:
         print(
             "Authenticate and save the daily token to .env:\n"
-            "  episerve-client login -u <username> -p <password>\n"
+            "  episerve-client login -u <email> -p <password>\n"
             "\n"
             "Or set EPISERVE_USERNAME and EPISERVE_PASSWORD in .env to skip the flags.\n"
             "\n"
@@ -368,7 +368,7 @@ def _build_parser() -> argparse.ArgumentParser:
         examples="episerve-client login -u alice -p secret\nepiserve-client login status",
         notes="Without -u/-p the values EPISERVE_USERNAME and EPISERVE_PASSWORD are used.",
     )
-    login_p.add_argument("--username", "-u", metavar="<username>", help="user name")
+    login_p.add_argument("--username", "-u", metavar="<email>", help="email address of your account")
     login_p.add_argument("--password", "-p", metavar="<password>", help="password")
     login_sub = _subcommands(login_p, "login_command")
     _command(login_sub, "status", "Check whether the current token is valid and show expiry",
