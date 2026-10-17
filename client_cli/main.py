@@ -534,7 +534,7 @@ def _build_parser() -> argparse.ArgumentParser:
     with_id("retire", "Hide a benchmark from the lists",
             description="Retire a benchmark: it disappears from the lists and takes no new entries,\n"
                         "but its leaderboard stays readable.", notes=_LOGIN_NOTE)
-    with_id("run-spec", "Show the input files, SQL and config to run a model on a final benchmark",
+    with_id("run-spec", "Show the generated input file and config to run a model on a final benchmark",
             description="Print what a model run needs to use the benchmark's pinned data: the input URL\n"
                         "(with ?version=<data commit>), the SQL, the file name and the forecast length.\n"
                         "The output has the shape of a model-run request.",
