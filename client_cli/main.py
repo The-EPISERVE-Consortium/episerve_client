@@ -208,6 +208,20 @@ def cmd_trigger_model_run(args):
     _out(_api(args).trigger_model_run(_load_json(args.params)), args.raw)
 
 
+def cmd_check_config(args):
+    result = _api(args).check_model_config(args.model, _load_json(args.config))
+    _out(result, args.raw)
+    if result.get("valid") is False:
+        sys.exit(1)
+
+
+def cmd_validate(args):
+    result = _api(args).validate(_load_json(args.document), args.spec, args.spec_version)
+    _out(result, args.raw)
+    if not result.get("valid"):
+        sys.exit(1)
+
+
 def cmd_run_show(args):
     _out(_api(args).get_run(args.run_id), args.raw)
 
@@ -454,6 +468,38 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     trigger_p.add_argument("params", metavar="<params>", help="path to a JSON file, or an inline JSON string")
 
+    # check-config
+    cc_p = _command(
+        sub, "check-config", "Check a run config against a model's card, without starting a run",
+        usage="check-config <model> <config>",
+        description="Check a model's config (the 'config' of trigger-model-run) against the parameters its\n"
+                    "model card declares: types, ranges, required and unknown keys. Nothing is started.\n"
+                    "Prints valid, the problems (the ones trigger-model-run would be refused with) and the\n"
+                    "config with the defaults filled in. Exit code 1 when the config is invalid.",
+        notes="'list models' shows each model's parameters. valid is null when the card declares none.",
+        examples="episerve-client check-config model__prediction__generic__timesfm "
+                 "'{\"history_length\": 52, \"prediction_length\": 4}'\n"
+                 "episerve-client check-config Q7611536028271 config.json",
+    )
+    cc_p.add_argument("model", metavar="<model>", help="model name or QID, as printed by 'list models'")
+    cc_p.add_argument("config", metavar="<config>", help="path to a JSON file, or an inline JSON object")
+
+    # validate
+    val_p = _command(
+        sub, "validate", "Validate a document (e.g. a model card) against a platform spec",
+        usage="validate <document> [--spec SPEC] [--spec-version N]",
+        description="Validate a JSON document against a spec of episerve_specs on the API server, e.g. a\n"
+                    "model's fdo.json against 'model-card'. Prints valid and the issues (errors and warnings,\n"
+                    "each with the path in the document). Exit code 1 when there are errors.",
+        notes="The version is --spec-version if given, else the one the document's conformsTo names, else the newest.\n"
+              "The same check runs offline with 'episerve-validate' from the episerve_specs package.",
+        examples="episerve-client validate fdo.json\n"
+                 "episerve-client validate fdo.json --spec model-card --spec-version 1",
+    )
+    val_p.add_argument("document", metavar="<document>", help="path to a JSON file, or an inline JSON string")
+    val_p.add_argument("--spec", default="model-card", metavar="<spec>", help="spec name (default: model-card)")
+    val_p.add_argument("--spec-version", metavar="<N>", help="spec version (default: from conformsTo, else newest)")
+
     # run
     run_p = _command(sub, "run", "Inspect a model run", usage="run <subcommand> <QID>",
                      description="Inspect a model run through the API server.")
@@ -594,6 +640,8 @@ def main():
         "health":             cmd_health,
         "list":               cmd_list,
         "trigger-model-run":  cmd_trigger_model_run,
+        "check-config":       cmd_check_config,
+        "validate":           cmd_validate,
         "benchmark":          cmd_benchmark,
     }
 

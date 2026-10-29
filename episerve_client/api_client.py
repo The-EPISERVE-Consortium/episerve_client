@@ -41,6 +41,37 @@ class EpiserveApiClient:
         r.raise_for_status()
         return r.json()
 
+    def check_model_config(self, model: str, config: dict) -> dict:
+        """Check a run config against a model's card (name or QID), without starting a run.
+
+        Returns ``valid`` (None when the card declares no parameters), ``problems`` and ``config``
+        with the declared defaults filled in.
+        """
+        r = self._http.post(f"/models/{model}/check-config", json={"config": config})
+        r.raise_for_status()
+        return r.json()
+
+    # --- specs (episerve_specs) ---
+
+    def list_schemas(self) -> dict:
+        """Every spec, its versions and their schema URLs."""
+        return self._get("/schemas")
+
+    def get_schema(self, spec: str, version: str | int) -> dict:
+        """The JSON Schema of one spec version."""
+        return self._get(f"/schemas/{spec}/v{version}.json")
+
+    def validate(self, document: dict, spec: str = "model-card", version: str | int | None = None) -> dict:
+        """Validate a document (e.g. a model's fdo.json) against a spec.
+
+        Returns ``valid``, ``spec``, ``version``, ``schema`` and ``issues`` (severity, path, message);
+        an invalid document is a normal answer, not an exception.
+        """
+        params = {"version": str(version)} if version is not None else None
+        r = self._http.post(f"/validate/{spec}", json=document, params=params)
+        r.raise_for_status()
+        return r.json()
+
     # --- benchmarks and leaderboard ---
 
     def list_benchmarks(self) -> list[dict]:

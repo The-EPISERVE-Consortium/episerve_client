@@ -363,3 +363,68 @@ class TestHelpScreens:
 
         args = _build_parser().parse_args(["--api-key", "tok", "item", "download", "Q1", "c"])
         assert args.api_key == "tok"
+
+
+class TestSpecsAndConfigCheck:
+    def test_check_model_config_posts_the_config(self):
+        client = EpiserveApiClient("https://your-api-server")
+        with patch.object(client._http, "post", return_value=_respond({"valid": True})) as post:
+            assert client.check_model_config("timesfm", {"history_length": 3}) == {"valid": True}
+        assert post.call_args.args[0] == "/models/timesfm/check-config"
+        assert post.call_args.kwargs["json"] == {"config": {"history_length": 3}}
+
+    def test_validate_posts_the_document(self):
+        client = EpiserveApiClient("https://your-api-server")
+        with patch.object(client._http, "post", return_value=_respond({"valid": False})) as post:
+            client.validate({"name": "x"}, "model-card", 1)
+        assert post.call_args.args[0] == "/validate/model-card"
+        assert post.call_args.kwargs["json"] == {"name": "x"}
+        assert post.call_args.kwargs["params"] == {"version": "1"}
+
+    def test_schemas(self):
+        client = EpiserveApiClient("https://your-api-server")
+        with patch.object(client._http, "get", return_value=_respond({})) as get:
+            client.list_schemas()
+            client.get_schema("model-card", 1)
+        assert [c.args[0] for c in get.call_args_list] == ["/schemas", "/schemas/model-card/v1.json"]
+
+    @pytest.mark.parametrize("valid,code", [(True, 0), (None, 0), (False, 1)])
+    def test_check_config_command_exit_code(self, monkeypatch, capsys, valid, code):
+        from client_cli import main as cli
+
+        calls = []
+
+        class Fake:
+            def check_model_config(self, model, config):
+                calls.append((model, config))
+                return {"valid": valid, "problems": [], "config": config}
+
+        monkeypatch.setattr(cli, "_api", lambda args: Fake())
+        monkeypatch.setattr(sys, "argv", ["episerve-client", "--no-update-check", "check-config", "m1", '{"a": 1}'])
+        with pytest.raises(SystemExit) as exc:
+            cli.main()
+            raise SystemExit(0)
+        assert exc.value.code == code
+        assert calls == [("m1", {"a": 1})]
+
+    @pytest.mark.parametrize("valid,code", [(True, 0), (False, 1)])
+    def test_validate_command_exit_code(self, monkeypatch, tmp_path, valid, code):
+        from client_cli import main as cli
+
+        doc = tmp_path / "fdo.json"
+        doc.write_text('{"name": "m"}')
+        calls = []
+
+        class Fake:
+            def validate(self, document, spec, version):
+                calls.append((document, spec, version))
+                return {"valid": valid, "issues": []}
+
+        monkeypatch.setattr(cli, "_api", lambda args: Fake())
+        monkeypatch.setattr(sys, "argv", ["episerve-client", "--no-update-check", "validate", str(doc),
+                                          "--spec-version", "1"])
+        with pytest.raises(SystemExit) as exc:
+            cli.main()
+            raise SystemExit(0)
+        assert exc.value.code == code
+        assert calls == [({"name": "m"}, "model-card", "1")]

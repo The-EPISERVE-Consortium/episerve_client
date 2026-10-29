@@ -61,6 +61,31 @@ episerve item download Q1748526042817 output/predictions.tsv -o predictions.tsv
 episerve item download Q1748526042817 output/predictions.tsv
 ```
 
+### Check a config before a run
+
+`check-config` checks a model's `config` against the parameters its model card
+declares (types, ranges, required and unknown keys) and starts nothing. It
+prints `valid`, the problems a run would be refused with, and the config with
+the defaults filled in; the exit code is 1 when the config is invalid.
+
+```bash
+episerve check-config model__prediction__generic__timesfm '{"history_length": 52, "prediction_length": 4}'
+episerve check-config Q7611536028271 config.json
+```
+
+### Validate a model card
+
+`validate` checks a JSON document against a platform spec of
+[`episerve_specs`](https://github.com/The-EPISERVE-Consortium/episerve_specs) on
+the API server, by default a model's `fdo.json` against `model-card`. It prints
+`valid` and the issues (errors and warnings, each with its path in the
+document); the exit code is 1 when there are errors.
+
+```bash
+episerve validate fdo.json
+episerve validate fdo.json --spec model-card --spec-version 1
+```
+
 ### Trigger a model run
 
 Pass parameters as a JSON file or inline JSON string:
@@ -172,6 +197,8 @@ These work before or after the command (`episerve --raw list runs` and `episerve
 ## Python library usage
 
 ```python
+import json
+
 from episerve_client import EpiserveClient
 
 client = EpiserveClient(
@@ -203,6 +230,11 @@ spec = client.get_benchmark_run_spec(draft["id"])   # same shape as a model-run 
 client.add_benchmark_entry(draft["id"], "Q1788513584728")
 
 run = client.get_run("Q1748526042817")
+
+# Check a config, validate a model card
+client.check_model_config("model__prediction__generic__timesfm", {"history_length": 52, "prediction_length": 4})
+client.validate(json.load(open("fdo.json")))          # spec model-card by default
+client.list_schemas()                                 # specs, versions, schema URLs
 
 # Trigger
 result = client.trigger_model_run({

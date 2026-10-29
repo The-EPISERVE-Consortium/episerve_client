@@ -49,6 +49,18 @@ class EpiserveClient:
     def trigger_model_run(self, params: dict) -> dict:
         return self.api.trigger_model_run(params)
 
+    def check_model_config(self, model: str, config: dict) -> dict:
+        return self.api.check_model_config(model, config)
+
+    def list_schemas(self) -> dict:
+        return self.api.list_schemas()
+
+    def get_schema(self, spec: str, version: str | int) -> dict:
+        return self.api.get_schema(spec, version)
+
+    def validate(self, document: dict, spec: str = "model-card", version: str | int | None = None) -> dict:
+        return self.api.validate(document, spec, version)
+
     def get_token(self, username: str, password: str) -> dict:
         return self.api.get_token(username, password)
 
